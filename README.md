@@ -11,8 +11,8 @@ Instructions:
 
 Project Group Members:
 
-* Group Member Name 1 (Student ID #, email)
-* Group Member Name 2 (Student ID #, email)
+* Xuan Toan Doan - 202583882  - txdoan@mun.ca
+* Group Member Name 2 (Student ID #, email) 
 
 Project URL
 
