@@ -12,7 +12,7 @@ Instructions:
 Project Group Members:
 
 * Xuan Toan Doan - 202583882  - txdoan@mun.ca
-* Group Member Name 2 (Student ID #, email) 
+* Saiba Dalmia - 202580736 - sdalmia@mun.ca
 
 Project URL
 
