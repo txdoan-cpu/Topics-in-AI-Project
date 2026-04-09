@@ -1,13 +1,4 @@
-# AI6001_Project_Name_Here
-
-Instructions:
-
-* Click the `Use this template` green button in the top-right of the repo
-* Create a new *PRIVATE* repository from this template
-* Add user `davechurchill` as a collaborator (Settings > Manage Access > Add People)
-* Click the pencil icon in the top-right of this section to edit straight from the GitHub website
-* Edit your `README.md` file to include your group info, and remove this instruction section
-* Once your project has been submitted, you can change it to public
+# **Exploring AI-Assisted Software Development: A Chess Game Case Study**
 
 Project Group Members:
 
