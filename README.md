@@ -59,4 +59,3 @@ Project Setup / Installation:
 
 * Your project setup and installation instructions go here
 * Feel free to include screenshots if you want
->>>>>>> c1cccd48bdff2933c9d752d56672d550cb1ff9da

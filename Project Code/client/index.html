@@ -11,32 +11,51 @@
 </head>
 <body class="landing-page">
   <main class="hero-shell">
-    <section class="hero-panel">
-      <p class="eyebrow">Basic Chess Project</p>
-      <h1>Play a complete chess game in the browser with save and replay support.</h1>
-      <p class="hero-copy">
-        This first version focuses on the essentials: a playable board, legal move validation,
-        optional AI moves, and browser-based game history without MongoDB or Docker.
-      </p>
-      <div class="hero-actions">
-        <a class="button primary" href="/play">Start Playing</a>
-        <a class="button secondary" href="/history">View History</a>
-      </div>
-    </section>
+    <section class="hero-layout">
+      <aside class="auth-panel auth-stage" aria-labelledby="auth-title">
+        <div class="auth-panel-header">
+          <p class="eyebrow">Chess Arena</p>
+          <h2 id="auth-title">Login or create your account</h2>
+          <p class="auth-panel-copy">A simple, secure entry point to the game. Sign in to continue.</p>
+        </div>
 
-    <section class="info-grid">
-      <article class="info-card">
-        <h2>Live Play</h2>
-        <p>Move pieces directly on the board, switch modes, and play against the built-in AI.</p>
-      </article>
-      <article class="info-card">
-        <h2>Saved Games</h2>
-        <p>Completed matches can be stored in local browser storage with full move history.</p>
-      </article>
-      <article class="info-card">
-        <h2>Replay Viewer</h2>
-        <p>Load any saved match and step through the game move by move from the opening onward.</p>
-      </article>
+        <div class="auth-toggle" role="tablist" aria-label="Account options">
+          <button type="button" class="auth-toggle-button is-active" data-auth-mode="login" aria-pressed="true">Login</button>
+          <button type="button" class="auth-toggle-button" data-auth-mode="register" aria-pressed="false">Create New Account</button>
+        </div>
+
+        <form class="auth-form" id="login-form" novalidate>
+          <label class="form-field">
+            <span>Email or Username</span>
+            <input type="text" name="identifier" autocomplete="username" placeholder="name@example.com" required>
+          </label>
+          <label class="form-field">
+            <span>Password</span>
+            <input type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+          </label>
+          <button class="button primary auth-submit" type="submit">Login</button>
+        </form>
+
+        <form class="auth-form is-hidden" id="register-form" novalidate>
+          <label class="form-field">
+            <span>Username</span>
+            <input type="text" name="username" autocomplete="username" placeholder="Choose a username" minlength="3" maxlength="30" required>
+          </label>
+          <label class="form-field">
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="email" placeholder="name@example.com" required>
+          </label>
+          <label class="form-field">
+            <span>Password</span>
+            <input type="password" name="password" autocomplete="new-password" placeholder="At least 8 characters and 1 special character" minlength="8" required>
+          </label>
+          <p class="password-hint">Password must be at least 8 characters long and include at least one special character.</p>
+          <button class="button primary auth-submit" type="submit">Create Account</button>
+        </form>
+
+        <p class="auth-feedback" id="auth-feedback" role="status" aria-live="polite"></p>
+        <p class="access-note" id="access-note">Authentication is required before entering the game.</p>
+      </aside>
     </section>
   </main>
   <script src="/js/main.js" defer></script>

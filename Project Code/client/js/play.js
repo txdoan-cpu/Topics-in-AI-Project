@@ -8,6 +8,7 @@
   const saveButton = document.getElementById("saveButton");
   const gameMode = document.getElementById("gameMode");
   const savedHint = document.getElementById("savedHint");
+  const logoutButton = document.getElementById("logoutButton");
   const { BrowserChessGame, ChessBoard, api, ui, storage } = window.ChessApp;
 
   let game = new BrowserChessGame();
@@ -102,10 +103,25 @@
     render();
   }
 
+  const existingSession = window.ChessApp.auth?.readSession?.();
+  if (!existingSession?.token) {
+    window.location.replace("/?auth=required");
+    return;
+  }
+
   board = new ChessBoard(boardElement, { onSquareClick: handleSquareClick });
   render();
 
   resetButton.addEventListener("click", resetGame);
   saveButton.addEventListener("click", saveGame);
   gameMode.addEventListener("change", resetGame);
+  logoutButton?.addEventListener("click", async () => {
+    try {
+      await api.request("/api/auth/logout", { method: "POST" });
+    } catch (error) {
+      // Clear local state even if the cookie was already invalid.
+    }
+    window.ChessApp.auth?.clearSession?.();
+    window.location.replace("/");
+  });
 })();

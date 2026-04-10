@@ -4,6 +4,9 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const aiRoutes = require("./api/ai");
+const authRoutes = require("./api/auth");
+const connectDb = require("./db");
+const { requirePageAuth } = require("./utils/auth");
 
 const app = express();
 const DEFAULT_PORT = Number(process.env.PORT) || 3000;
@@ -17,15 +20,24 @@ app.get("/health", (req, res) => {
   res.json({ ok: true });
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/ai", aiRoutes);
 
 app.get("/", (req, res) => res.sendFile(path.join(clientPath, "index.html")));
-app.get("/play", (req, res) => res.sendFile(path.join(clientPath, "play.html")));
+app.get("/play", requirePageAuth, (req, res) => res.sendFile(path.join(clientPath, "play.html")));
 app.get("/history", (req, res) => res.sendFile(path.join(clientPath, "history.html")));
 app.get("/replay", (req, res) => res.sendFile(path.join(clientPath, "replay.html")));
 app.get("*", (req, res) => res.redirect("/"));
 
-function startServer(port) {
+async function startServer(port) {
+  try {
+    await connectDb();
+    console.log("Connected to MongoDB Atlas.");
+  } catch (error) {
+    console.error("Failed to connect to MongoDB.", error.message);
+    process.exit(1);
+  }
+
   const server = app.listen(port, () => {
     console.log(`Chess server listening on http://localhost:${port}`);
     if (port !== DEFAULT_PORT) {
