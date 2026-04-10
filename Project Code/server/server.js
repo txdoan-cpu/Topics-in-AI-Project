@@ -1,11 +1,13 @@
 require("dotenv").config();
 
+const http = require("http");
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const aiRoutes = require("./api/ai");
 const authRoutes = require("./api/auth");
 const connectDb = require("./db");
+const attachRealtime = require("./realtime/socket");
 const { requirePageAuth } = require("./utils/auth");
 
 const app = express();
@@ -26,6 +28,7 @@ app.use("/api/ai", aiRoutes);
 app.get("/", (req, res) => res.sendFile(path.join(clientPath, "index.html")));
 app.get("/play", requirePageAuth, (req, res) => res.sendFile(path.join(clientPath, "play.html")));
 app.get("/ai-setup", requirePageAuth, (req, res) => res.sendFile(path.join(clientPath, "ai-setup.html")));
+app.get("/online-setup", requirePageAuth, (req, res) => res.sendFile(path.join(clientPath, "online-setup.html")));
 app.get("/history", (req, res) => res.sendFile(path.join(clientPath, "history.html")));
 app.get("/replay", (req, res) => res.sendFile(path.join(clientPath, "replay.html")));
 app.get("*", (req, res) => res.redirect("/"));
@@ -39,7 +42,10 @@ async function startServer(port) {
     process.exit(1);
   }
 
-  const server = app.listen(port, () => {
+  const server = http.createServer(app);
+  attachRealtime(server);
+
+  server.listen(port, () => {
     console.log(`Chess server listening on http://localhost:${port}`);
     if (port !== DEFAULT_PORT) {
       console.log(`Requested port ${DEFAULT_PORT} was unavailable. Using port ${port} instead.`);

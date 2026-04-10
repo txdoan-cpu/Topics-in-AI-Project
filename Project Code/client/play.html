@@ -27,15 +27,29 @@
 
     <aside class="sidebar-panel">
       <section class="panel">
-        <h1>Live Game</h1>
         <p id="statusText">White to move.</p>
         <div class="mode-row">
-          <label for="gameMode">Mode</label>
           <select id="gameMode">
             <option value="local">Local two-player</option>
             <option value="ai" selected>Play vs AI</option>
+            <option value="online">Real-time online</option>
           </select>
         </div>
+        <section id="onlinePanel" class="online-panel is-hidden" aria-label="Online match controls">
+          <div class="connection-row">
+            <span class="connection-chip" id="connectionStatus">Offline</span>
+            <span class="connection-chip" id="playerColorValue">No color</span>
+          </div>
+          <div class="mode-row compact">
+            <label for="roomList">Current Rooms</label>
+            <div id="roomList" class="room-list" aria-live="polite"></div>
+          </div>
+          <div class="button-row button-row-inline">
+            <button id="createMatchButton" class="button primary" type="button">Create Match</button>
+            <button id="joinMatchButton" class="button secondary" type="button">Join Match</button>
+          </div>
+          <p id="onlineHint" class="online-hint">Create a room or join an existing room to play live.</p>
+        </section>
         <div class="button-row">
           <button id="startGameButton" class="button primary" type="button">Start Game</button>
           <button id="loadGameButton" class="button secondary" type="button">Load Game</button>
@@ -65,6 +79,16 @@
             <strong class="timer-value" id="blackTimerValue">--:--</strong>
           </div>
         </section>
+        <section class="captures-panel" aria-label="Captured pieces">
+          <div class="capture-group">
+            <span class="timer-label">Captured by White</span>
+            <div id="whiteCaptured" class="capture-list"></div>
+          </div>
+          <div class="capture-group">
+            <span class="timer-label">Captured by Black</span>
+            <div id="blackCaptured" class="capture-list"></div>
+          </div>
+        </section>
         <p id="savedHint">Completed games can be saved locally and replayed later.</p>
       </section>
 
@@ -78,6 +102,8 @@
   <script src="/js/main.js" defer></script>
   <script src="/js/board.js" defer></script>
   <script src="/js/ui.js" defer></script>
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="/js/multiplayer.js" defer></script>
   <script src="/js/play.js" defer></script>
 </body>
 </html>

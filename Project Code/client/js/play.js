@@ -1,8 +1,14 @@
 (function startPlayPage() {
   const boardElement = document.getElementById("board");
   if (!boardElement) return;
+
   const ACTIVE_GAME_STORAGE_KEY_PREFIX = "chessActiveGame";
   const SAVED_GAME_STORAGE_KEY_PREFIX = "chessSavedActiveGame";
+  const AI_PRESETS = {
+    easy: { label: "Easy", algorithm: "greedy", depth: 1 },
+    medium: { label: "Medium", algorithm: "minimax", depth: 2 },
+    hard: { label: "Hard", algorithm: "alphabeta", depth: 3 }
+  };
 
   const statusText = document.getElementById("statusText");
   const moveList = document.getElementById("moveList");
@@ -13,18 +19,23 @@
   const gameMode = document.getElementById("gameMode");
   const savedHint = document.getElementById("savedHint");
   const logoutButton = document.getElementById("logoutButton");
+  const gameSettingsSection = document.querySelector(".game-settings");
   const difficultyValue = document.getElementById("difficultyValue");
   const timeValue = document.getElementById("timeValue");
   const whiteTimerCard = document.getElementById("whiteTimerCard");
   const blackTimerCard = document.getElementById("blackTimerCard");
   const whiteTimerValue = document.getElementById("whiteTimerValue");
   const blackTimerValue = document.getElementById("blackTimerValue");
-  const { BrowserChessGame, ChessBoard, api, ui, storage } = window.ChessApp;
-  const AI_PRESETS = {
-    easy: { label: "Easy", algorithm: "greedy", algorithmLabel: "Greedy evaluation", depth: 1 },
-    medium: { label: "Medium", algorithm: "minimax", algorithmLabel: "Minimax", depth: 2 },
-    hard: { label: "Hard", algorithm: "alphabeta", algorithmLabel: "Alpha-beta pruning", depth: 3 }
-  };
+  const onlinePanel = document.getElementById("onlinePanel");
+  const roomList = document.getElementById("roomList");
+  const createMatchButton = document.getElementById("createMatchButton");
+  const joinMatchButton = document.getElementById("joinMatchButton");
+  const connectionStatus = document.getElementById("connectionStatus");
+  const playerColorValue = document.getElementById("playerColorValue");
+  const onlineHint = document.getElementById("onlineHint");
+  const whiteCaptured = document.getElementById("whiteCaptured");
+  const blackCaptured = document.getElementById("blackCaptured");
+  const { BrowserChessGame, ChessBoard, api, ui, storage, multiplayer } = window.ChessApp;
   const searchParams = new URLSearchParams(window.location.search);
   const sounds = {
     move: new Audio("/assets/audio/move.wav"),
@@ -33,13 +44,24 @@
   };
 
   let game = new BrowserChessGame();
-  let selectedSquare = null;
   let board = null;
+  let selectedSquare = null;
   let currentAiSetup = null;
   let hasStarted = false;
   let timerState = null;
   let timerIntervalId = null;
   let currentUser = null;
+  let suppressModeChange = false;
+  let suppressOnlineDisconnectReset = false;
+
+  const onlineState = {
+    client: null,
+    roomId: null,
+    playerColor: null,
+    connected: false,
+    ready: false,
+    rooms: []
+  };
 
   function getLegacyActiveGameStorageKey() {
     return ACTIVE_GAME_STORAGE_KEY_PREFIX;
@@ -53,6 +75,14 @@
   function getSavedGameStorageKey() {
     const userId = currentUser?.user?.id || currentUser?.user?.username;
     return userId ? `${SAVED_GAME_STORAGE_KEY_PREFIX}:${userId}` : SAVED_GAME_STORAGE_KEY_PREFIX;
+  }
+
+  function isOnlineMode() {
+    return gameMode.value === "online";
+  }
+
+  function isAiMode() {
+    return gameMode.value === "ai";
   }
 
   function getAiSetupFromQuery() {
@@ -69,6 +99,26 @@
       pieceModel: searchParams.get("pieceModel") || "standard",
       sound: searchParams.get("sound") !== "off",
       ...AI_PRESETS[difficultyKey]
+    };
+  }
+
+  function getOnlineRoomFromQuery() {
+    const roomId = (searchParams.get("room") || "").trim().toUpperCase();
+    return searchParams.get("mode") === "online" && roomId ? roomId : null;
+  }
+
+  function getOnlineCreateSetupFromQuery() {
+    const roomName = String(searchParams.get("roomName") || "").trim();
+    if (searchParams.get("mode") !== "online" || searchParams.get("create") !== "1" || !roomName) {
+      return null;
+    }
+
+    return {
+      roomName,
+      time: String(searchParams.get("time") || "10"),
+      theme: String(searchParams.get("theme") || "classic"),
+      pieceModel: String(searchParams.get("pieceModel") || "standard"),
+      sound: searchParams.get("sound") !== "off"
     };
   }
 
@@ -103,8 +153,12 @@
     }
   }
 
+  function hasSavedGame() {
+    return Boolean(readSavedGame());
+  }
+
   function saveActiveGame() {
-    if (!hasStarted) {
+    if (!hasStarted || isOnlineMode()) {
       return;
     }
 
@@ -124,34 +178,33 @@
       return;
     }
 
-    localStorage.setItem(getSavedGameStorageKey(), JSON.stringify({
-      userId: currentUser?.user?.id || null,
-      username: currentUser?.user?.username || null,
-      mode: gameMode.value,
-      gameState: game.serialize(),
-      moveHistory: game.moveHistory,
-      aiSetup: currentAiSetup,
-      timerState: timerState ? { ...timerState } : null,
-      savedAt: new Date().toISOString()
-    }));
+    const payload = isOnlineMode()
+      ? {
+          userId: currentUser?.user?.id || null,
+          username: currentUser?.user?.username || null,
+          mode: "online",
+          roomId: onlineState.roomId,
+          playerColor: onlineState.playerColor,
+          gameState: game.serialize(),
+          moveHistory: game.moveHistory,
+          savedAt: new Date().toISOString()
+        }
+      : {
+          userId: currentUser?.user?.id || null,
+          username: currentUser?.user?.username || null,
+          mode: gameMode.value,
+          gameState: game.serialize(),
+          moveHistory: game.moveHistory,
+          aiSetup: currentAiSetup,
+          timerState: timerState ? { ...timerState } : null,
+          savedAt: new Date().toISOString()
+        };
+
+    localStorage.setItem(getSavedGameStorageKey(), JSON.stringify(payload));
   }
 
   function clearActiveGame() {
     localStorage.removeItem(getActiveGameStorageKey());
-  }
-
-  function hasSavedGame() {
-    return Boolean(readSavedGame());
-  }
-
-  function updateActionState() {
-    startGameButton?.classList.toggle("is-hidden", hasStarted);
-    loadGameButton?.classList.toggle("is-hidden", hasStarted);
-    saveButton?.classList.toggle("is-hidden", !hasStarted);
-    retreatGameButton?.classList.toggle("is-hidden", !hasStarted);
-    if (gameMode) {
-      gameMode.disabled = hasStarted;
-    }
   }
 
   function formatTime(milliseconds) {
@@ -230,8 +283,7 @@
       return;
     }
 
-    const effectiveStatus = game.getStatus();
-    if (effectiveStatus.over) {
+    if (game.getStatus().over) {
       stopTimerLoop();
       updateTimerDisplay();
       return;
@@ -291,7 +343,7 @@
   }
 
   function playSound(name) {
-    if (!hasStarted || !currentAiSetup?.sound) {
+    if (!hasStarted || !currentAiSetup?.sound || isOnlineMode()) {
       return;
     }
 
@@ -314,11 +366,19 @@
   }
 
   function updateSettingsDisplay() {
+    gameSettingsSection?.classList.toggle("is-hidden", isOnlineMode());
+
     if (!difficultyValue || !timeValue) {
       return;
     }
 
-    if (gameMode.value !== "ai" || !currentAiSetup) {
+    if (isOnlineMode()) {
+      difficultyValue.textContent = "Realtime match";
+      timeValue.textContent = currentAiSetup?.time ? `${currentAiSetup.time} minutes` : (onlineState.roomId || "Join a room");
+      return;
+    }
+
+    if (!isAiMode() || !currentAiSetup) {
       difficultyValue.textContent = "Local play";
       timeValue.textContent = "Not set";
       return;
@@ -328,8 +388,178 @@
     timeValue.textContent = `${currentAiSetup.time} minutes`;
   }
 
+  function updateOnlineControls() {
+    const onlineMode = isOnlineMode();
+    onlinePanel?.classList.toggle("is-hidden", !onlineMode);
+    createMatchButton?.classList.toggle("is-hidden", !onlineMode || onlineState.connected);
+    joinMatchButton?.classList.add("is-hidden");
+
+    if (connectionStatus) {
+      connectionStatus.textContent = onlineState.connected ? "Connected" : "Offline";
+      connectionStatus.classList.toggle("is-live", onlineState.connected);
+      connectionStatus.classList.toggle("is-offline", !onlineState.connected);
+    }
+
+    if (playerColorValue) {
+      playerColorValue.textContent = onlineState.playerColor
+        ? (onlineState.playerColor === "w" ? "White" : "Black")
+        : "No color";
+    }
+
+    if (onlineHint && onlineMode && !hasStarted) {
+      onlineHint.textContent = onlineState.roomId
+        ? `Room ${onlineState.roomId} is ready. Share it with another player or join it from another tab.`
+        : "Create a room or join an existing room to play live.";
+    }
+
+    retreatGameButton.textContent = onlineMode ? "Resign Match" : "Retreat Game";
+    renderRoomList();
+  }
+
+  function renderRoomList() {
+    if (!roomList) {
+      return;
+    }
+
+    roomList.innerHTML = "";
+
+    if (!onlineState.rooms.length) {
+      const empty = document.createElement("div");
+      empty.className = "room-list-empty";
+      empty.textContent = "No rooms available.";
+      roomList.appendChild(empty);
+      return;
+    }
+
+    onlineState.rooms.forEach((room) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "room-list-item";
+      if (room.connectedPlayers >= room.capacity) {
+        button.classList.add("is-full");
+      }
+      button.disabled = isOnlineMode() && onlineState.connected;
+
+      const details = document.createElement("span");
+      const name = document.createElement("span");
+      name.className = "room-list-name";
+      name.textContent = room.roomName || room.roomId;
+      const meta = document.createElement("span");
+      meta.className = "room-list-meta";
+      meta.textContent = room.roomId;
+      details.append(name, meta);
+
+      const count = document.createElement("span");
+      count.className = "room-list-count";
+      count.textContent = `${room.connectedPlayers}/${room.capacity}`;
+
+      button.append(details, count);
+      button.addEventListener("click", async () => {
+        if (room.connectedPlayers >= room.capacity) {
+          window.alert("Room is already full.");
+          statusText.textContent = "Room is already full.";
+          return;
+        }
+
+        try {
+          await joinOnlineMatch(room.roomId);
+        } catch (error) {
+          statusText.textContent = error.message;
+        }
+      });
+      roomList.appendChild(button);
+    });
+  }
+
+  function updateActionState() {
+    if (isOnlineMode()) {
+      startGameButton?.classList.add("is-hidden");
+      loadGameButton?.classList.add("is-hidden");
+      saveButton?.classList.add("is-hidden");
+      retreatGameButton?.classList.toggle("is-hidden", !onlineState.connected);
+      retreatGameButton.disabled = !onlineState.connected;
+      if (gameMode) {
+        gameMode.disabled = hasStarted;
+      }
+      updateOnlineControls();
+      return;
+    }
+
+    startGameButton?.classList.toggle("is-hidden", hasStarted);
+    loadGameButton?.classList.toggle("is-hidden", hasStarted);
+    saveButton?.classList.toggle("is-hidden", !hasStarted);
+    retreatGameButton?.classList.toggle("is-hidden", !hasStarted);
+    retreatGameButton.disabled = !hasStarted;
+    if (gameMode) {
+      gameMode.disabled = hasStarted;
+    }
+    updateOnlineControls();
+  }
+
   function getBoardPiece(square) {
     return game.board[8 - Number(square[1])][square.charCodeAt(0) - 97];
+  }
+
+  function getCapturedPieces() {
+    return game.moveHistory.reduce((captured, move, index) => {
+      if (!move.captured) {
+        return captured;
+      }
+
+      if (index % 2 === 0) {
+        captured.white.push(move.captured);
+      } else {
+        captured.black.push(move.captured);
+      }
+
+      return captured;
+    }, { white: [], black: [] });
+  }
+
+  function renderCapturedPieces() {
+    const captured = getCapturedPieces();
+    const pieceSet = window.ChessApp.pieceSets.classic;
+
+    function renderList(element, pieces, color) {
+      if (!element) {
+        return;
+      }
+
+      element.innerHTML = "";
+      pieces.forEach((piece) => {
+        const chip = document.createElement("span");
+        chip.className = "capture-piece";
+        chip.textContent = pieceSet[`${color}${piece}`];
+        element.appendChild(chip);
+      });
+    }
+
+    renderList(whiteCaptured, captured.white, "b");
+    renderList(blackCaptured, captured.black, "w");
+  }
+
+  function buildStatusText() {
+    const effectiveStatus = getEffectiveStatus();
+    if (effectiveStatus.over) {
+      return `${effectiveStatus.message}. Result: ${effectiveStatus.result}`;
+    }
+
+    if (isOnlineMode()) {
+      if (!onlineState.playerColor) {
+        return "Join a room to receive a color assignment.";
+      }
+
+      if (!onlineState.ready) {
+        return "Waiting for the second player to join the room.";
+      }
+
+      const side = game.turn === "w" ? "White" : "Black";
+      const suffix = effectiveStatus.message === "Check" ? " Check." : "";
+      return `${side} to move.${suffix} ${onlineState.playerColor === game.turn ? "Your move." : "Waiting for your opponent."}`.trim();
+    }
+
+    const side = game.turn === "w" ? "White" : "Black";
+    return `${side} to move.${effectiveStatus.message === "Check" ? " Check." : ""}`;
   }
 
   function render() {
@@ -344,23 +574,22 @@
     const legalTargets = selectedSquare
       ? legalMoves.filter((move) => move.from === selectedSquare).map((move) => move.to)
       : [];
+
     board.setSelection(selectedSquare, legalTargets);
     board.render(game.board);
-    const effectiveStatus = getEffectiveStatus();
-    if (effectiveStatus.over) {
-      stopTimerLoop();
-      statusText.textContent = `${effectiveStatus.message}. Result: ${effectiveStatus.result}`;
-    } else {
-      const side = game.turn === "w" ? "White" : "Black";
-      statusText.textContent = `${side} to move.${effectiveStatus.message === "Check" ? " Check." : ""}`;
-    }
+    statusText.textContent = buildStatusText();
     ui.updateMoveList(moveList, game.moveHistory);
+    renderCapturedPieces();
     updateTimerDisplay();
+    updateSettingsDisplay();
     updateActionState();
   }
 
   async function maybeMakeAiMove() {
-    if (gameMode.value !== "ai" || !currentAiSetup || game.turn !== "b" || getEffectiveStatus().over) return;
+    if (!isAiMode() || !currentAiSetup || game.turn !== "b" || getEffectiveStatus().over) {
+      return;
+    }
+
     statusText.textContent = "AI is thinking...";
     const { move } = await api.request("/api/ai/move", {
       method: "POST",
@@ -370,6 +599,7 @@
         algorithm: currentAiSetup.algorithm
       })
     });
+
     const isCapture = Boolean(move.captured);
     game.applyMove(move);
     syncTimerTurn();
@@ -378,16 +608,39 @@
     playSound(game.getStatus().message === "Check" ? "check" : isCapture ? "capture" : "move");
   }
 
+  async function handleOnlineMove(move) {
+    if (!onlineState.client || !onlineState.roomId) {
+      statusText.textContent = "Join a room before moving.";
+      return;
+    }
+
+    await onlineState.client.sendMove(onlineState.roomId, move);
+    selectedSquare = null;
+    render();
+  }
+
   async function handleSquareClick(square) {
     if (!hasStarted || getEffectiveStatus().over) {
       return;
+    }
+
+    if (isOnlineMode()) {
+      if (!onlineState.playerColor) {
+        statusText.textContent = "This match needs a player assignment.";
+        return;
+      }
+
+      if (onlineState.playerColor !== game.turn) {
+        statusText.textContent = "It is not your turn.";
+        return;
+      }
     }
 
     const legalMoves = game.generateLegalMoves();
     const piece = getBoardPiece(square);
 
     if (!selectedSquare) {
-      if (piece && piece.color === game.turn) {
+      if (piece && piece.color === game.turn && (!isOnlineMode() || piece.color === onlineState.playerColor)) {
         selectedSquare = square;
         render();
       }
@@ -398,6 +651,15 @@
     if (!move) {
       selectedSquare = piece && piece.color === game.turn ? square : null;
       render();
+      return;
+    }
+
+    if (isOnlineMode()) {
+      try {
+        await handleOnlineMove(move);
+      } catch (error) {
+        statusText.textContent = error.message;
+      }
       return;
     }
 
@@ -416,6 +678,226 @@
     }
   }
 
+  function setOnlineRoute(roomId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("mode", "online");
+    url.searchParams.set("room", roomId);
+    window.history.replaceState({}, "", url);
+  }
+
+  function clearOnlineRoute() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("mode");
+    url.searchParams.delete("room");
+    window.history.replaceState({}, "", url);
+  }
+
+  function setModeValue(mode) {
+    suppressModeChange = true;
+    gameMode.value = mode;
+    suppressModeChange = false;
+  }
+
+  function disconnectOnlineClient() {
+    onlineState.client?.disconnect();
+    onlineState.client = null;
+    onlineState.connected = false;
+    updateOnlineControls();
+  }
+
+  function resetOnlineMatchState(options = {}) {
+    const { keepRoomId = true, statusMessage = "Create or join a room to start a real-time match." } = options;
+
+    selectedSquare = null;
+    hasStarted = false;
+    stopTimerLoop();
+    timerState = null;
+    game = new BrowserChessGame();
+    currentAiSetup = null;
+    onlineState.connected = false;
+    onlineState.playerColor = null;
+    onlineState.ready = false;
+
+    if (!keepRoomId) {
+      onlineState.roomId = null;
+      clearOnlineRoute();
+    }
+
+    if (savedHint) {
+      savedHint.textContent = "Completed games can be saved locally and replayed later.";
+    }
+
+    if (onlineHint) {
+      onlineHint.textContent = onlineState.roomId
+        ? `Room ${onlineState.roomId} is available. Join to continue the live match.`
+        : "Create a room or join an existing room to play live.";
+    }
+
+    statusText.textContent = statusMessage;
+    updateSettingsDisplay();
+    render();
+  }
+
+  function handleOnlineMatchEnded(payload) {
+    const resignedColor = payload?.resignedColor || null;
+    const wasCurrentPlayer = Boolean(onlineState.playerColor) && onlineState.playerColor === resignedColor;
+
+    suppressOnlineDisconnectReset = true;
+    disconnectOnlineClient();
+    resetOnlineMatchState({
+      keepRoomId: false,
+      statusMessage: wasCurrentPlayer
+        ? "You resigned from the online match."
+        : "Your opponent resigned from the online match."
+    });
+
+    if (wasCurrentPlayer) {
+      window.alert("You have resigned the match.");
+    } else {
+      window.alert("Your opponent has resigned the match.");
+    }
+
+    ensureOnlineClient().listRooms().catch(() => {});
+  }
+
+  function handleOnlineMatchResigned(payload) {
+    if (!payload?.snapshot) {
+      return;
+    }
+
+    applyOnlineSnapshot(payload.snapshot, { replaceUrl: true });
+    statusText.textContent = "Your opponent resigned. Waiting for a new player to join.";
+    window.alert("Your opponent has resigned the match.");
+    ensureOnlineClient().listRooms().catch(() => {});
+  }
+
+  function applyOnlineSnapshot(snapshot, options = {}) {
+    game = new BrowserChessGame(snapshot.gameState);
+    game.moveHistory = Array.isArray(snapshot.moveHistory) ? snapshot.moveHistory : game.moveHistory;
+    currentAiSetup = snapshot.settings ? {
+      time: String(snapshot.settings.timeControl),
+      theme: snapshot.settings.boardTheme,
+      pieceModel: snapshot.settings.pieceModel,
+      sound: snapshot.settings.sound !== false
+    } : null;
+    selectedSquare = null;
+    hasStarted = Boolean(snapshot.matchStarted);
+    timerState = snapshot.timerState ? { ...snapshot.timerState } : null;
+    stopTimerLoop();
+    setModeValue("online");
+    onlineState.roomId = snapshot.roomId;
+    onlineState.ready = Boolean(snapshot.ready);
+
+    if (savedHint) {
+      const whiteName = snapshot.players.white?.username || "White";
+      const blackName = snapshot.players.black?.username || "Black";
+      savedHint.textContent = `${whiteName} vs ${blackName} in room ${snapshot.roomId}.`;
+    }
+
+    if (onlineHint) {
+      onlineHint.textContent = snapshot.ready
+        ? `Room ${snapshot.roomName || snapshot.roomId} is live.`
+        : `Room ${snapshot.roomName || snapshot.roomId} is waiting for the second player.`;
+    }
+
+    if (options.replaceUrl !== false) {
+      setOnlineRoute(snapshot.roomId);
+    }
+
+    if (hasStarted && timerState) {
+      startTimerLoop();
+    } else {
+      updateTimerDisplay();
+    }
+    updateSettingsDisplay();
+    render();
+  }
+
+  function ensureOnlineClient() {
+    if (onlineState.client) {
+      return onlineState.client;
+    }
+
+    onlineState.client = multiplayer.createClient({
+      token: currentUser.token,
+      onSnapshot(snapshot) {
+        applyOnlineSnapshot(snapshot);
+      },
+      onStatusChange({ connected }) {
+        onlineState.connected = connected;
+        if (!connected && suppressOnlineDisconnectReset) {
+          suppressOnlineDisconnectReset = false;
+          updateOnlineControls();
+          return;
+        }
+        if (!connected && isOnlineMode()) {
+          resetOnlineMatchState({
+            keepRoomId: true,
+            statusMessage: "You are disconnected from the online match."
+          });
+          return;
+        }
+        updateOnlineControls();
+      },
+      onError(message) {
+        statusText.textContent = message;
+      },
+      onMatchEnded(payload) {
+        handleOnlineMatchEnded(payload);
+      },
+      onMatchResigned(payload) {
+        handleOnlineMatchResigned(payload);
+      },
+      onRoomList(rooms) {
+        onlineState.rooms = rooms;
+        updateOnlineControls();
+      }
+    });
+
+    return onlineState.client;
+  }
+
+  async function createOnlineMatch(setup) {
+    try {
+      const client = ensureOnlineClient();
+      const result = await client.createMatch(setup?.roomName || "", {
+        timeControl: Number(setup?.time || 10),
+        boardTheme: setup?.theme || "classic",
+        pieceModel: setup?.pieceModel || "standard",
+        sound: setup?.sound !== false
+      });
+      onlineState.roomId = result.roomId;
+      onlineState.playerColor = result.playerColor;
+      currentAiSetup = {
+        time: String(setup?.time || "10"),
+        theme: setup?.theme || "classic",
+        pieceModel: setup?.pieceModel || "standard",
+        sound: setup?.sound !== false
+      };
+      applyOnlineSnapshot(result.snapshot);
+    } catch (error) {
+      statusText.textContent = error.message;
+    }
+  }
+
+  async function joinOnlineMatch(roomId) {
+    const targetRoomId = String(roomId || "").trim().toUpperCase();
+    if (!targetRoomId) {
+      statusText.textContent = "Select a room to join.";
+      return;
+    }
+
+    try {
+      const client = ensureOnlineClient();
+      const result = await client.joinMatch(targetRoomId);
+      onlineState.roomId = result.roomId;
+      onlineState.playerColor = result.playerColor;
+      applyOnlineSnapshot(result.snapshot);
+    } catch (error) {
+      statusText.textContent = error.message;
+    }
+  }
+
   function saveGame() {
     if (!hasStarted) {
       statusText.textContent = "Start a game before saving.";
@@ -427,16 +909,15 @@
 
     if (status.over) {
       const savedGame = storage.saveGame({
-        whitePlayer: "White",
-        blackPlayer: gameMode.value === "ai" ? "AI" : "Black",
+        whitePlayer: isOnlineMode() ? (onlineState.roomId ? `${onlineState.roomId} White` : "White") : "White",
+        blackPlayer: isOnlineMode()
+          ? (onlineState.roomId ? `${onlineState.roomId} Black` : "Black")
+          : (isAiMode() ? "AI" : "Black"),
         result: status.result,
         mode: gameMode.value,
         settings: currentAiSetup ? {
           difficulty: currentAiSetup.label,
-          timeControl: `${currentAiSetup.time} minutes`,
-          boardTheme: currentAiSetup.theme || "classic",
-          pieceModel: currentAiSetup.pieceModel || "standard",
-          sound: currentAiSetup.sound ? "On" : "Off"
+          timeControl: `${currentAiSetup.time} minutes`
         } : null,
         moves: game.moveHistory,
         finalFen: game.toFen()
@@ -449,9 +930,11 @@
       return;
     }
 
-    statusText.textContent = "Game progress saved.";
+    statusText.textContent = isOnlineMode() ? "Match bookmark saved." : "Game progress saved.";
     if (savedHint) {
-      savedHint.textContent = "Saved progress is available through Load Game.";
+      savedHint.textContent = isOnlineMode()
+        ? "Saved match can be restored with Load Game."
+        : "Saved progress is available through Load Game.";
     }
     updateActionState();
   }
@@ -462,19 +945,26 @@
     selectedSquare = null;
     hasStarted = preserveStarted;
     stopTimerLoop();
+
     if (preserveStarted && currentAiSetup?.time) {
       initializeTimer(currentAiSetup.time);
     } else {
       timerState = null;
       updateTimerDisplay();
     }
+
     if (savedHint) {
       savedHint.textContent = "Completed games can be saved locally and replayed later.";
     }
+
     updateSettingsDisplay();
     render();
+
     if (!hasStarted) {
-      statusText.textContent = "Select a mode and press Start Game.";
+      statusText.textContent = isOnlineMode()
+        ? "Create or join a room to start a real-time match."
+        : "Select a mode and press Start Game.";
+
       if (hasSavedGame() && savedHint) {
         savedHint.textContent = "Saved game found. Use Load Game to continue.";
       }
@@ -482,7 +972,7 @@
   }
 
   function startGame() {
-    if (gameMode.value === "ai") {
+    if (isAiMode()) {
       window.location.assign("/ai-setup");
       return;
     }
@@ -494,9 +984,9 @@
     resetGame({ preserveStarted: true });
   }
 
-  function loadGame() {
+  async function loadGame() {
     const savedGame = readSavedGame();
-    if (!savedGame?.gameState) {
+    if (!savedGame) {
       updateActionState();
       window.alert("Save game is not found!");
       return;
@@ -506,9 +996,15 @@
       return;
     }
 
+    if (savedGame.mode === "online" && savedGame.roomId) {
+      setModeValue("online");
+      await joinOnlineMatch(savedGame.roomId);
+      return;
+    }
+
     game = new BrowserChessGame(savedGame.gameState);
     game.moveHistory = Array.isArray(savedGame.moveHistory) ? savedGame.moveHistory : [];
-    gameMode.value = savedGame.mode === "ai" ? "ai" : "local";
+    setModeValue(savedGame.mode === "ai" ? "ai" : "local");
     currentAiSetup = savedGame.aiSetup || null;
     timerState = savedGame.timerState
       ? { ...savedGame.timerState, lastTickAt: null }
@@ -529,7 +1025,28 @@
     render();
   }
 
-  function retreatGame() {
+  async function retreatGame() {
+    if (isOnlineMode()) {
+      if (!window.confirm("Confirm Resignation\n\nAre you sure you want to resign this match?")) {
+        return;
+      }
+
+      try {
+        await onlineState.client?.resign(onlineState.roomId);
+        suppressOnlineDisconnectReset = true;
+        disconnectOnlineClient();
+        resetOnlineMatchState({
+          keepRoomId: false,
+          statusMessage: "You resigned from the online match."
+        });
+        window.alert("You have resigned the match.");
+        ensureOnlineClient().listRooms().catch(() => {});
+      } catch (error) {
+        statusText.textContent = error.message;
+      }
+      return;
+    }
+
     if (!window.confirm("Retreat the current game and return to the not-started state?")) {
       return;
     }
@@ -544,13 +1061,16 @@
     window.location.replace("/?auth=required");
     return;
   }
-  currentUser = existingSession;
 
+  currentUser = existingSession;
   currentAiSetup = getAiSetupFromQuery();
+
   if (currentAiSetup) {
-    gameMode.value = "ai";
+    setModeValue("ai");
     hasStarted = true;
     initializeTimer(currentAiSetup.time);
+  } else if (getOnlineRoomFromQuery()) {
+    setModeValue("online");
   }
 
   board = new ChessBoard(boardElement, { onSquareClick: handleSquareClick });
@@ -558,12 +1078,25 @@
   if (currentAiSetup) {
     clearActiveGame();
     resetGame({ preserveStarted: true });
+  } else {
+    const activeGame = readActiveGame();
+    if (activeGame?.gameState && !getOnlineRoomFromQuery()) {
+      game = new BrowserChessGame(activeGame.gameState);
+      game.moveHistory = Array.isArray(activeGame.moveHistory) ? activeGame.moveHistory : [];
+      setModeValue(activeGame.mode === "ai" ? "ai" : "local");
+      currentAiSetup = activeGame.aiSetup || null;
+      timerState = activeGame.timerState ? { ...activeGame.timerState, lastTickAt: null } : null;
+      hasStarted = true;
+      startTimerLoop();
+    }
   }
 
   updateSettingsDisplay();
   updateTimerDisplay();
   if (!hasStarted) {
-    statusText.textContent = "Select a mode and press Start Game.";
+    statusText.textContent = isOnlineMode()
+      ? "Create or join a room to start a real-time match."
+      : "Select a mode and press Start Game.";
     if (hasSavedGame() && savedHint) {
       savedHint.textContent = "Saved game found. Use Load Game to continue.";
     }
@@ -571,25 +1104,64 @@
   render();
 
   startGameButton.addEventListener("click", startGame);
-  loadGameButton?.addEventListener("click", loadGame);
-  retreatGameButton?.addEventListener("click", retreatGame);
+  loadGameButton?.addEventListener("click", () => { loadGame(); });
+  retreatGameButton?.addEventListener("click", () => { retreatGame(); });
   saveButton.addEventListener("click", saveGame);
+  createMatchButton?.addEventListener("click", () => {
+    window.location.assign("/online-setup");
+  });
+  joinMatchButton?.addEventListener("click", () => { joinOnlineMatch(); });
+
   gameMode.addEventListener("change", () => {
-    if (gameMode.value !== "ai") {
+    if (suppressModeChange) {
+      return;
+    }
+
+    selectedSquare = null;
+
+    if (isOnlineMode()) {
+      currentAiSetup = null;
+      hasStarted = false;
+      timerState = null;
+      clearActiveGame();
+      resetGame({ preserveStarted: false });
+      ensureOnlineClient().listRooms().catch(() => {});
+      return;
+    }
+
+    disconnectOnlineClient();
+    clearOnlineRoute();
+
+    if (!isAiMode()) {
       currentAiSetup = null;
     }
+
     updateSettingsDisplay();
     if (!hasStarted) {
       render();
     }
   });
+
   logoutButton?.addEventListener("click", async () => {
     try {
       await api.request("/api/auth/logout", { method: "POST" });
     } catch (error) {
       // Clear local state even if the cookie was already invalid.
     }
+
+    disconnectOnlineClient();
     window.ChessApp.auth?.clearSession?.();
     window.location.replace("/");
   });
+
+  const createSetupFromQuery = getOnlineCreateSetupFromQuery();
+  const roomFromQuery = getOnlineRoomFromQuery();
+  if (createSetupFromQuery) {
+    setModeValue("online");
+    createOnlineMatch(createSetupFromQuery);
+  } else if (roomFromQuery) {
+    joinOnlineMatch(roomFromQuery);
+  } else if (isOnlineMode()) {
+    ensureOnlineClient().listRooms().catch(() => {});
+  }
 })();

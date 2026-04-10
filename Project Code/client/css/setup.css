@@ -59,6 +59,20 @@
   color: var(--text);
 }
 
+.compact-field input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 0.85rem 0.95rem;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  font: inherit;
+}
+
+.compact-field-wide {
+  grid-column: 1 / -1;
+}
+
 .setup-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -139,6 +153,12 @@
 .setup-submit,
 .setup-back {
   white-space: nowrap;
+}
+
+.setup-feedback {
+  min-height: 1.25rem;
+  margin: 0;
+  color: #8b3d24;
 }
 
 @media (max-width: 640px) {

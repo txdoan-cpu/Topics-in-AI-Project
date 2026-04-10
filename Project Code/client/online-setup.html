@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Match Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/setup.css">
+</head>
+<body>
+  <header class="page-header">
+    <a class="brand" href="/">Chess Arena</a>
+    <nav>
+      <a href="/play">Play</a>
+      <a href="/history">History</a>
+    </nav>
+  </header>
+
+  <main class="setup-layout">
+    <section class="setup-panel">
+      <div class="setup-header">
+        <div>
+          <p class="eyebrow">Online Match Setup</p>
+          <h1>Create match</h1>
+        </div>
+        <a class="button secondary setup-back" href="/play?mode=online">Back</a>
+      </div>
+
+      <form id="onlineSetupForm" class="setup-form">
+        <div class="setup-grid">
+          <label class="compact-field compact-field-wide">
+            <span>Room Name</span>
+            <input name="roomName" id="roomNameInput" type="text" maxlength="40" placeholder="Enter room name" required>
+          </label>
+
+          <label class="compact-field">
+            <span>Time</span>
+            <select name="time" id="onlineTimeSelect">
+              <option value="5">5 min</option>
+              <option value="10" selected>10 min</option>
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+            </select>
+          </label>
+
+          <label class="compact-field">
+            <span>Board Theme</span>
+            <select name="theme" id="onlineThemeSelect">
+              <option value="classic">Classic</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+
+          <label class="compact-field">
+            <span>Piece Model</span>
+            <select name="pieceModel" id="onlinePieceModelSelect">
+              <option value="standard">Standard</option>
+              <option value="modern">Modern</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </label>
+        </div>
+
+        <section class="setup-summary" aria-label="Selected match setup">
+          <div class="summary-row">
+            <span class="summary-label">Mode</span>
+            <strong>Realtime online</strong>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Room</span>
+            <strong id="roomSummary">Waiting for name</strong>
+          </div>
+        </section>
+
+        <p id="onlineSetupFeedback" class="setup-feedback" aria-live="polite"></p>
+
+        <label class="switch-row" for="onlineSoundToggle">
+          <span>
+            <strong>Sound effects</strong>
+            <small>Move, capture, and check audio</small>
+          </span>
+          <span class="switch">
+            <input type="checkbox" id="onlineSoundToggle" name="sound" checked>
+            <span class="switch-track" aria-hidden="true"></span>
+          </span>
+        </label>
+
+        <button class="button primary setup-submit" type="submit">Create Online Match</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/js/main.js" defer></script>
+  <script src="/js/online-setup.js" defer></script>
+</body>
+</html>
