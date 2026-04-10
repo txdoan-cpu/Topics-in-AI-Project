@@ -1,6 +1,13 @@
-# Chess Game Project
+# **Exploring AI-Assisted Software Development: A Chess Game Case Study**
 
-Basic chess web application built with HTML, CSS, JavaScript, Node, and Express.
+Project Group Members:
+
+* Xuan Toan Doan - 202583882  - txdoan@mun.ca
+* Saiba Dalmia - 202580736 - sdalmia@mun.ca
+
+## Project Overview
+
+A chess web application built with HTML, CSS, JavaScript, Node, and Express.
 
 ## Features
 
@@ -39,3 +46,17 @@ npm run dev
 - This first step intentionally does not use MongoDB or Docker.
 - Saved games are stored in browser `localStorage`.
 - Asset folders for board graphics, piece images, and audio are scaffolded and ready for real assets.
+
+Project URL
+
+* Paste your hosted web application URL here so I can test it
+
+Project Videos:
+
+* Project Presentation: YouTube URL
+
+Project Setup / Installation:
+
+* Your project setup and installation instructions go here
+* Feel free to include screenshots if you want
+>>>>>>> c1cccd48bdff2933c9d752d56672d550cb1ff9da
