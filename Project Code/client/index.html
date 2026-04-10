@@ -19,11 +19,6 @@
           <p class="auth-panel-copy">A simple, secure entry point to the game. Sign in to continue.</p>
         </div>
 
-        <div class="auth-toggle" role="tablist" aria-label="Account options">
-          <button type="button" class="auth-toggle-button is-active" data-auth-mode="login" aria-pressed="true">Login</button>
-          <button type="button" class="auth-toggle-button" data-auth-mode="register" aria-pressed="false">Create New Account</button>
-        </div>
-
         <form class="auth-form" id="login-form" novalidate>
           <label class="form-field">
             <span>Email or Username</span>
@@ -33,7 +28,10 @@
             <span>Password</span>
             <input type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
           </label>
-          <button class="button primary auth-submit" type="submit">Login</button>
+          <div class="auth-action-row">
+            <button class="button primary auth-submit" type="submit">Login</button>
+            <button class="button secondary auth-switch" type="button" data-auth-mode="register">New Account</button>
+          </div>
         </form>
 
         <form class="auth-form is-hidden" id="register-form" novalidate>
@@ -51,6 +49,7 @@
           </label>
           <p class="password-hint">Password must be at least 8 characters long and include at least one special character.</p>
           <button class="button primary auth-submit" type="submit">Create Account</button>
+          <button class="button secondary auth-switch" type="button" data-auth-mode="login">Back To Login</button>
         </form>
 
         <p class="auth-feedback" id="auth-feedback" role="status" aria-live="polite"></p>

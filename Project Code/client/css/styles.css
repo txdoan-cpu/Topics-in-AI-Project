@@ -190,30 +190,6 @@ button, input, select { font: inherit; }
   color: var(--muted);
 }
 
-.auth-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-}
-
-.auth-toggle-button {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.5);
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-}
-
-.auth-toggle-button.is-active {
-  background: var(--secondary);
-  color: #fff;
-}
-
-.auth-toggle-button:hover {
-  transform: translateY(-1px);
-}
-
 .auth-form {
   display: grid;
   gap: 0.9rem;
@@ -249,6 +225,22 @@ button, input, select { font: inherit; }
 .auth-submit {
   width: 100%;
   margin-top: 0.25rem;
+}
+
+.auth-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.auth-action-row .auth-submit,
+.auth-action-row .auth-switch {
+  margin-top: 0.25rem;
+}
+
+.auth-switch {
+  width: 100%;
 }
 
 .auth-feedback {

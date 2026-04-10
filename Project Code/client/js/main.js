@@ -82,9 +82,9 @@ async function validateExistingSession() {
 function bindAuthPanel() {
   const loginForm = document.getElementById("login-form");
   const registerForm = document.getElementById("register-form");
-  const toggleButtons = document.querySelectorAll("[data-auth-mode]");
+  const modeButtons = document.querySelectorAll("[data-auth-mode]");
 
-  if (!loginForm || !registerForm || toggleButtons.length === 0) {
+  if (!loginForm || !registerForm || modeButtons.length === 0) {
     return;
   }
 
@@ -92,17 +92,10 @@ function bindAuthPanel() {
     const loginActive = mode === "login";
     loginForm.classList.toggle("is-hidden", !loginActive);
     registerForm.classList.toggle("is-hidden", loginActive);
-
-    toggleButtons.forEach((button) => {
-      const active = button.dataset.authMode === mode;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-pressed", String(active));
-    });
-
     setAuthFeedback("");
   }
 
-  toggleButtons.forEach((button) => {
+  modeButtons.forEach((button) => {
     button.addEventListener("click", () => setMode(button.dataset.authMode));
   });
 
