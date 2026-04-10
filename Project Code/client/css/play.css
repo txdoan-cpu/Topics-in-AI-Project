@@ -80,6 +80,56 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.game-actions-primary,
+.game-actions-secondary {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.game-actions-primary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.4rem;
+}
+
+.game-actions-secondary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.75rem;
+}
+
+.game-actions-secondary .button,
+.game-actions-primary .button {
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.8rem 1rem;
+}
+
+.game-actions-secondary .button {
+  border-radius: 16px;
+}
+
+#undoButton {
+  background: rgba(19, 44, 69, 0.1);
+  color: var(--text);
+  border: 1px solid rgba(19, 44, 69, 0.12);
+}
+
+#saveButton {
+  background: rgba(212, 166, 92, 0.2);
+  color: #6f431b;
+  border: 1px solid rgba(212, 166, 92, 0.32);
+}
+
+#retreatGameButton {
+  background: rgba(166, 52, 22, 0.12);
+  color: #8b3d24;
+  border: 1px solid rgba(166, 52, 22, 0.24);
+}
+
+.game-actions-secondary .button:hover,
+.game-actions-primary .button:hover {
+  transform: translateY(-1px);
+}
+
 .online-hint {
   margin: 0.75rem 0 0;
   color: var(--muted);
@@ -242,11 +292,56 @@
   line-height: 1;
 }
 
+.move-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.move-list-table {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.move-list-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--line);
+}
+
+.move-list-header {
+  background: rgba(19, 44, 69, 0.08);
+  border-color: rgba(19, 44, 69, 0.12);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.move-list-turn {
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--muted);
+}
+
+.move-list-white,
+.move-list-black {
+  min-width: 0;
+  font-weight: 600;
+}
+
 @media (max-width: 980px) {
   .play-layout {
     grid-template-columns: 1fr;
   }
 
+  .game-actions-primary,
+  .game-actions-secondary,
   .game-timers,
   .settings-grid {
     grid-template-columns: 1fr;

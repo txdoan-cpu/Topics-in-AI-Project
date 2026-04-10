@@ -247,8 +247,8 @@ window.ChessApp.drawPieceToCanvas = function drawPieceToCanvas(canvas, pieceKey,
   const isWhite = pieceKey.startsWith("w");
   const classicGlyph = window.ChessApp.pieceSets.classic[pieceKey];
   const initialGlyph = window.ChessApp.pieceSets.initials[pieceKey];
-  const fill = isWhite ? "#fffaf0" : "#1a2328";
-  const accent = isWhite ? "#bfc8d2" : "#d4a65c";
+  const fill = isWhite ? "#6f9fd8" : "#1a2328";
+  const accent = isWhite ? "#d9e8fb" : "#d4a65c";
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();

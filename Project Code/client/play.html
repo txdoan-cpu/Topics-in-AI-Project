@@ -30,7 +30,6 @@
         <p id="statusText">White to move.</p>
         <div class="mode-row">
           <select id="gameMode">
-            <option value="local">Local two-player</option>
             <option value="ai" selected>Play vs AI</option>
             <option value="online">Real-time online</option>
           </select>
@@ -50,9 +49,12 @@
           </div>
           <p id="onlineHint" class="online-hint">Create a room or join an existing room to play live.</p>
         </section>
-        <div class="button-row">
+        <div class="button-row game-actions-primary">
           <button id="startGameButton" class="button primary" type="button">Start Game</button>
           <button id="loadGameButton" class="button secondary" type="button">Load Game</button>
+        </div>
+        <div class="button-row game-actions-secondary">
+          <button id="undoButton" class="button secondary" type="button">Undo</button>
           <button id="saveButton" class="button secondary" type="button">Save Game</button>
           <button id="retreatGameButton" class="button secondary" type="button">Retreat Game</button>
         </div>

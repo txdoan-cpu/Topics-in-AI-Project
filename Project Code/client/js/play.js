@@ -14,6 +14,7 @@
   const moveList = document.getElementById("moveList");
   const startGameButton = document.getElementById("startGameButton");
   const loadGameButton = document.getElementById("loadGameButton");
+  const undoButton = document.getElementById("undoButton");
   const retreatGameButton = document.getElementById("retreatGameButton");
   const saveButton = document.getElementById("saveButton");
   const gameMode = document.getElementById("gameMode");
@@ -53,6 +54,9 @@
   let currentUser = null;
   let suppressModeChange = false;
   let suppressOnlineDisconnectReset = false;
+  let aiThinking = false;
+  let undoStack = [];
+  let lastGameAlertKey = null;
 
   const onlineState = {
     client: null,
@@ -157,6 +161,37 @@
     return Boolean(readSavedGame());
   }
 
+  function captureUndoSnapshot() {
+    return {
+      gameState: game.serialize(),
+      moveHistory: game.moveHistory.map((move) => ({ ...move })),
+      timerState: timerState ? { ...timerState, lastTickAt: null } : null,
+      aiSetup: currentAiSetup ? { ...currentAiSetup } : null
+    };
+  }
+
+  function restoreUndoSnapshot(snapshot) {
+    if (!snapshot?.gameState) {
+      return;
+    }
+
+    game = new BrowserChessGame(snapshot.gameState);
+    game.moveHistory = Array.isArray(snapshot.moveHistory) ? snapshot.moveHistory : [];
+    currentAiSetup = snapshot.aiSetup ? { ...snapshot.aiSetup } : currentAiSetup;
+    timerState = snapshot.timerState ? { ...snapshot.timerState, lastTickAt: null } : null;
+    selectedSquare = null;
+    aiThinking = false;
+    lastGameAlertKey = null;
+    stopTimerLoop();
+    if (timerState) {
+      startTimerLoop();
+    } else {
+      updateTimerDisplay();
+    }
+    saveActiveGame();
+    render();
+  }
+
   function saveActiveGame() {
     if (!hasStarted || isOnlineMode()) {
       return;
@@ -255,6 +290,55 @@
     }
 
     return game.getStatus();
+  }
+
+  function getOutcomeLabel(status) {
+    if (!status?.over) {
+      return null;
+    }
+
+    if (status.result === "1/2-1/2") {
+      return "Draw";
+    }
+
+    if (!isOnlineMode() && isAiMode()) {
+      return status.result === "1-0" ? "Win" : "Loss";
+    }
+
+    if (isOnlineMode() && onlineState.playerColor) {
+      const playerWon =
+        (onlineState.playerColor === "w" && status.result === "1-0") ||
+        (onlineState.playerColor === "b" && status.result === "0-1");
+      return playerWon ? "Win" : "Loss";
+    }
+
+    return status.message === "Checkmate" ? `Checkmate. ${status.result === "1-0" ? "White" : "Black"} wins` : status.message;
+  }
+
+  function notifyGameState(status) {
+    if (!hasStarted) {
+      return;
+    }
+
+    const alertKey = `${game.toFen()}|${status.message}|${status.result || ""}`;
+    if (alertKey === lastGameAlertKey) {
+      return;
+    }
+
+    let message = "";
+    if (status.over) {
+      const outcome = getOutcomeLabel(status);
+      message = outcome === "Draw" ? "Draw" : outcome;
+    } else if (status.message === "Check") {
+      message = "Check";
+    }
+
+    if (!message) {
+      return;
+    }
+
+    lastGameAlertKey = alertKey;
+    window.alert(message);
   }
 
   function syncTimerTurn() {
@@ -475,6 +559,7 @@
     if (isOnlineMode()) {
       startGameButton?.classList.add("is-hidden");
       loadGameButton?.classList.add("is-hidden");
+      undoButton?.classList.add("is-hidden");
       saveButton?.classList.add("is-hidden");
       retreatGameButton?.classList.toggle("is-hidden", !onlineState.connected);
       retreatGameButton.disabled = !onlineState.connected;
@@ -487,6 +572,10 @@
 
     startGameButton?.classList.toggle("is-hidden", hasStarted);
     loadGameButton?.classList.toggle("is-hidden", hasStarted);
+    undoButton?.classList.toggle("is-hidden", !isAiMode() || !hasStarted);
+    if (undoButton) {
+      undoButton.disabled = !isAiMode() || !hasStarted || undoStack.length === 0 || aiThinking;
+    }
     saveButton?.classList.toggle("is-hidden", !hasStarted);
     retreatGameButton?.classList.toggle("is-hidden", !hasStarted);
     retreatGameButton.disabled = !hasStarted;
@@ -577,12 +666,14 @@
 
     board.setSelection(selectedSquare, legalTargets);
     board.render(game.board);
+    const effectiveStatus = getEffectiveStatus();
     statusText.textContent = buildStatusText();
     ui.updateMoveList(moveList, game.moveHistory);
     renderCapturedPieces();
     updateTimerDisplay();
     updateSettingsDisplay();
     updateActionState();
+    notifyGameState(effectiveStatus);
   }
 
   async function maybeMakeAiMove() {
@@ -590,22 +681,28 @@
       return;
     }
 
-    statusText.textContent = "AI is thinking...";
-    const { move } = await api.request("/api/ai/move", {
-      method: "POST",
-      body: JSON.stringify({
-        state: game.serialize(),
-        depth: currentAiSetup.depth,
-        algorithm: currentAiSetup.algorithm
-      })
-    });
-
-    const isCapture = Boolean(move.captured);
-    game.applyMove(move);
-    syncTimerTurn();
-    selectedSquare = null;
+    aiThinking = true;
     render();
-    playSound(game.getStatus().message === "Check" ? "check" : isCapture ? "capture" : "move");
+    statusText.textContent = "AI is thinking...";
+    try {
+      const { move } = await api.request("/api/ai/move", {
+        method: "POST",
+        body: JSON.stringify({
+          state: game.serialize(),
+          depth: currentAiSetup.depth,
+          algorithm: currentAiSetup.algorithm
+        })
+      });
+
+      const isCapture = Boolean(move.captured);
+      game.applyMove(move);
+      syncTimerTurn();
+      selectedSquare = null;
+      playSound(game.getStatus().message === "Check" ? "check" : isCapture ? "capture" : "move");
+    } finally {
+      aiThinking = false;
+      render();
+    }
   }
 
   async function handleOnlineMove(move) {
@@ -663,6 +760,10 @@
       return;
     }
 
+    if (isAiMode()) {
+      undoStack.push(captureUndoSnapshot());
+    }
+
     const isCapture = Boolean(move.captured);
     game.applyMove(move);
     syncTimerTurn();
@@ -674,7 +775,9 @@
       await maybeMakeAiMove();
       saveActiveGame();
     } catch (error) {
+      aiThinking = false;
       statusText.textContent = error.message;
+      render();
     }
   }
 
@@ -944,6 +1047,9 @@
     game = new BrowserChessGame();
     selectedSquare = null;
     hasStarted = preserveStarted;
+    undoStack = [];
+    aiThinking = false;
+    lastGameAlertKey = null;
     stopTimerLoop();
 
     if (preserveStarted && currentAiSetup?.time) {
@@ -984,6 +1090,16 @@
     resetGame({ preserveStarted: true });
   }
 
+  function undoLastAiTurn() {
+    if (!isAiMode() || !hasStarted || aiThinking || undoStack.length === 0) {
+      return;
+    }
+
+    const snapshot = undoStack.pop();
+    restoreUndoSnapshot(snapshot);
+    statusText.textContent = "Last move undone.";
+  }
+
   async function loadGame() {
     const savedGame = readSavedGame();
     if (!savedGame) {
@@ -1006,6 +1122,9 @@
     game.moveHistory = Array.isArray(savedGame.moveHistory) ? savedGame.moveHistory : [];
     setModeValue(savedGame.mode === "ai" ? "ai" : "local");
     currentAiSetup = savedGame.aiSetup || null;
+    undoStack = [];
+    aiThinking = false;
+    lastGameAlertKey = null;
     timerState = savedGame.timerState
       ? { ...savedGame.timerState, lastTickAt: null }
       : (currentAiSetup?.time ? {
@@ -1105,6 +1224,7 @@
 
   startGameButton.addEventListener("click", startGame);
   loadGameButton?.addEventListener("click", () => { loadGame(); });
+  undoButton?.addEventListener("click", undoLastAiTurn);
   retreatGameButton?.addEventListener("click", () => { retreatGame(); });
   saveButton.addEventListener("click", saveGame);
   createMatchButton?.addEventListener("click", () => {
