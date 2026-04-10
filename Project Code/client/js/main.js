@@ -217,19 +217,86 @@ window.ChessApp.storage = {
   }
 };
 
-window.ChessApp.pieces = {
-  wp: "\u2659",
-  wn: "\u2658",
-  wb: "\u2657",
-  wr: "\u2656",
-  wq: "\u2655",
-  wk: "\u2654",
-  bp: "\u265F",
-  bn: "\u265E",
-  bb: "\u265D",
-  br: "\u265C",
-  bq: "\u265B",
-  bk: "\u265A"
+window.ChessApp.pieceSets = {
+  classic: {
+    wp: "\u2659",
+    wn: "\u2658",
+    wb: "\u2657",
+    wr: "\u2656",
+    wq: "\u2655",
+    wk: "\u2654",
+    bp: "\u265F",
+    bn: "\u265E",
+    bb: "\u265D",
+    br: "\u265C",
+    bq: "\u265B",
+    bk: "\u265A"
+  },
+  initials: {
+    wp: "P",
+    wn: "N",
+    wb: "B",
+    wr: "R",
+    wq: "Q",
+    wk: "K",
+    bp: "P",
+    bn: "N",
+    bb: "B",
+    br: "R",
+    bq: "Q",
+    bk: "K"
+  }
+};
+
+window.ChessApp.drawPieceToCanvas = function drawPieceToCanvas(canvas, pieceKey, pieceModel = "standard") {
+  const ctx = canvas.getContext("2d");
+  const size = Math.min(canvas.width, canvas.height);
+  const isWhite = pieceKey.startsWith("w");
+  const classicGlyph = window.ChessApp.pieceSets.classic[pieceKey];
+  const initialGlyph = window.ChessApp.pieceSets.initials[pieceKey];
+  const fill = isWhite ? "#fffaf0" : "#1a2328";
+  const accent = isWhite ? "#bfc8d2" : "#d4a65c";
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+
+  if (pieceModel === "standard") {
+    ctx.fillStyle = fill;
+    ctx.font = `${Math.floor(size * 0.62)}px serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "rgba(0,0,0,0.18)";
+    ctx.shadowBlur = 8;
+    ctx.fillText(classicGlyph, 0, size * 0.04);
+  } else if (pieceModel === "modern") {
+    ctx.beginPath();
+    ctx.lineWidth = Math.max(3, size * 0.05);
+    ctx.strokeStyle = fill;
+    ctx.arc(0, 0, size * 0.28, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = `700 ${Math.floor(size * 0.3)}px "IBM Plex Mono", monospace`;
+    ctx.fillStyle = accent;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(initialGlyph, 0, 2);
+  } else {
+    ctx.beginPath();
+    ctx.fillStyle = fill;
+    ctx.arc(0, 0, size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.fillStyle = accent;
+    ctx.arc(0, size * 0.04, size * 0.19, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = `700 ${Math.floor(size * 0.24)}px "IBM Plex Mono", monospace`;
+    ctx.fillStyle = isWhite ? "#1d2328" : "#fff9ef";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(initialGlyph, 0, size * 0.04);
+  }
+
+  ctx.restore();
 };
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -6,12 +6,12 @@ const ai = new ChessAI(2);
 
 router.post("/move", async (req, res) => {
   try {
-    const { state, depth } = req.body;
+    const { state, depth, algorithm } = req.body;
     if (!state) {
       return res.status(400).json({ error: "Game state is required." });
     }
 
-    const move = ai.chooseMove(state, depth || 2);
+    const move = ai.chooseMove(state, depth || 2, algorithm || "alphabeta");
     if (!move) {
       return res.status(400).json({ error: "No legal move available." });
     }
@@ -23,4 +23,3 @@ router.post("/move", async (req, res) => {
 });
 
 module.exports = router;
-

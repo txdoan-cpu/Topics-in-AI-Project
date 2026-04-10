@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Game Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/setup.css">
+</head>
+<body>
+  <header class="page-header">
+    <a class="brand" href="/">Chess Arena</a>
+    <nav>
+      <a href="/play">Play</a>
+      <a href="/history">History</a>
+    </nav>
+  </header>
+
+  <main class="setup-layout">
+    <section class="setup-panel">
+      <div class="setup-header">
+        <div>
+          <p class="eyebrow">AI Match Setup</p>
+          <h1>Game setup</h1>
+        </div>
+        <a class="button secondary setup-back" href="/play">Back</a>
+      </div>
+
+      <form id="aiSetupForm" class="setup-form">
+        <div class="setup-grid">
+          <label class="compact-field">
+            <span>Difficulty</span>
+            <select name="difficulty" id="difficultySelect">
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
+
+          <label class="compact-field">
+            <span>Time</span>
+            <select name="time" id="timeSelect">
+              <option value="5">5 min</option>
+              <option value="10">10 min</option>
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+            </select>
+          </label>
+
+          <label class="compact-field">
+            <span>Board Theme</span>
+            <select name="theme" id="themeSelect">
+              <option value="classic">Classic</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+
+          <label class="compact-field">
+            <span>Piece Model</span>
+            <select name="pieceModel" id="pieceModelSelect">
+              <option value="standard">Standard</option>
+              <option value="modern">Modern</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </label>
+        </div>
+
+        <section class="setup-summary" aria-label="Selected setup">
+          <div class="summary-row">
+            <span class="summary-label">Algorithm</span>
+            <strong id="algorithmSummary">Greedy evaluation</strong>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Depth</span>
+            <strong id="depthSummary">1 ply</strong>
+          </div>
+        </section>
+
+        <label class="switch-row" for="soundToggle">
+          <span>
+            <strong>Sound effects</strong>
+            <small>Move, capture, and check audio</small>
+          </span>
+          <span class="switch">
+            <input type="checkbox" id="soundToggle" name="sound" checked>
+            <span class="switch-track" aria-hidden="true"></span>
+          </span>
+        </label>
+
+        <button class="button primary setup-submit" type="submit">Start AI Game</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/js/main.js" defer></script>
+  <script src="/js/setup.js" defer></script>
+</body>
+</html>

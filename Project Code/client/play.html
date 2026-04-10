@@ -33,13 +33,38 @@
           <label for="gameMode">Mode</label>
           <select id="gameMode">
             <option value="local">Local two-player</option>
-            <option value="ai">Play vs AI</option>
+            <option value="ai" selected>Play vs AI</option>
           </select>
         </div>
         <div class="button-row">
-          <button id="resetButton" class="button primary" type="button">New Game</button>
+          <button id="startGameButton" class="button primary" type="button">Start Game</button>
+          <button id="loadGameButton" class="button secondary" type="button">Load Game</button>
           <button id="saveButton" class="button secondary" type="button">Save Game</button>
+          <button id="retreatGameButton" class="button secondary" type="button">Retreat Game</button>
         </div>
+        <section class="game-settings" aria-label="Game setup details">
+          <p class="settings-label">Current Setup</p>
+          <dl class="settings-grid">
+            <div>
+              <dt>Difficulty</dt>
+              <dd id="difficultyValue">Local play</dd>
+            </div>
+            <div>
+              <dt>Time Control</dt>
+              <dd id="timeValue">Not set</dd>
+            </div>
+          </dl>
+        </section>
+        <section class="game-timers" aria-label="Game timers">
+          <div class="timer-card" id="whiteTimerCard">
+            <span class="timer-label">White</span>
+            <strong class="timer-value" id="whiteTimerValue">--:--</strong>
+          </div>
+          <div class="timer-card" id="blackTimerCard">
+            <span class="timer-label">Black</span>
+            <strong class="timer-value" id="blackTimerValue">--:--</strong>
+          </div>
+        </section>
         <p id="savedHint">Completed games can be saved locally and replayed later.</p>
       </section>
 

@@ -78,11 +78,81 @@ class ChessAI {
     return { score: bestScore, move: bestMove };
   }
 
-  chooseMove(gameState, depth = this.depth) {
+  minimaxWithoutPruning(game, depth, maximizing) {
+    const status = game.getStatus();
+    if (depth === 0 || status.over) {
+      return { score: this.evaluate(game) };
+    }
+
+    const legalMoves = game.generateLegalMoves();
+    if (!legalMoves.length) {
+      return { score: this.evaluate(game) };
+    }
+
+    let bestMove = legalMoves[0];
+
+    if (maximizing) {
+      let bestScore = -Infinity;
+      for (const move of legalMoves) {
+        const clone = ChessGame.fromState(game.serialize());
+        clone.applyMove(move, true);
+        const result = this.minimaxWithoutPruning(clone, depth - 1, false);
+        if (result.score > bestScore) {
+          bestScore = result.score;
+          bestMove = move;
+        }
+      }
+      return { score: bestScore, move: bestMove };
+    }
+
+    let bestScore = Infinity;
+    for (const move of legalMoves) {
+      const clone = ChessGame.fromState(game.serialize());
+      clone.applyMove(move, true);
+      const result = this.minimaxWithoutPruning(clone, depth - 1, true);
+      if (result.score < bestScore) {
+        bestScore = result.score;
+        bestMove = move;
+      }
+    }
+    return { score: bestScore, move: bestMove };
+  }
+
+  chooseGreedyMove(game) {
+    const legalMoves = game.generateLegalMoves();
+    if (!legalMoves.length) {
+      return null;
+    }
+
+    let bestMove = legalMoves[0];
+    let bestScore = game.turn === "w" ? -Infinity : Infinity;
+
+    for (const move of legalMoves) {
+      const clone = ChessGame.fromState(game.serialize());
+      clone.applyMove(move, true);
+      const score = this.evaluate(clone);
+      if (game.turn === "w" ? score > bestScore : score < bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+    }
+
+    return bestMove;
+  }
+
+  chooseMove(gameState, depth = this.depth, algorithm = "alphabeta") {
     const game = ChessGame.fromState(gameState);
+
+    if (algorithm === "greedy") {
+      return this.chooseGreedyMove(game);
+    }
+
+    if (algorithm === "minimax") {
+      return this.minimaxWithoutPruning(game, depth, game.turn === "w").move;
+    }
+
     return this.minimax(game, depth, -Infinity, Infinity, game.turn === "w").move;
   }
 }
 
 module.exports = ChessAI;
-

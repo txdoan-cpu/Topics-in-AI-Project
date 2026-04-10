@@ -409,9 +409,14 @@
     constructor(root, options = {}) {
       this.root = root;
       this.onSquareClick = options.onSquareClick || (() => {});
+      this.pieceModel = options.pieceModel || "classic";
       this.selectedSquare = null;
       this.legalTargets = [];
       this.render(createInitialBoard());
+    }
+
+    setPieceModel(pieceModel) {
+      this.pieceModel = pieceModel || "classic";
     }
 
     render(boardState) {
@@ -424,8 +429,12 @@
           square.dataset.square = toSquare(row, col);
           const piece = boardState[row][col];
           if (piece) {
-            square.textContent = window.ChessApp.pieces[`${piece.color}${piece.type}`];
-            square.classList.add(piece.color === "w" ? "piece-white" : "piece-black");
+            const canvas = document.createElement("canvas");
+            canvas.width = 96;
+            canvas.height = 96;
+            canvas.className = `piece-canvas piece-${piece.color}`;
+            window.ChessApp.drawPieceToCanvas(canvas, `${piece.color}${piece.type}`, this.pieceModel);
+            square.appendChild(canvas);
           }
           if (this.selectedSquare === square.dataset.square) square.classList.add("selected");
           if (this.legalTargets.includes(square.dataset.square)) square.classList.add("legal");

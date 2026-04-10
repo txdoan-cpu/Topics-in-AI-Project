@@ -25,6 +25,7 @@ app.use("/api/ai", aiRoutes);
 
 app.get("/", (req, res) => res.sendFile(path.join(clientPath, "index.html")));
 app.get("/play", requirePageAuth, (req, res) => res.sendFile(path.join(clientPath, "play.html")));
+app.get("/ai-setup", requirePageAuth, (req, res) => res.sendFile(path.join(clientPath, "ai-setup.html")));
 app.get("/history", (req, res) => res.sendFile(path.join(clientPath, "history.html")));
 app.get("/replay", (req, res) => res.sendFile(path.join(clientPath, "replay.html")));
 app.get("*", (req, res) => res.redirect("/"));
