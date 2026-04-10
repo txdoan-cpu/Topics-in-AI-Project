@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Replay Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/replay.css">
+</head>
+<body>
+  <header class="page-header">
+    <a class="brand" href="/">Chess Arena</a>
+    <nav>
+      <a href="/play">Play</a>
+      <a href="/history">History</a>
+    </nav>
+  </header>
+
+  <main class="replay-layout">
+    <section class="board-panel">
+      <div id="replayBoard" class="board" aria-label="Replay board"></div>
+    </section>
+    <aside class="sidebar-panel">
+      <section class="panel">
+        <h1>Replay Viewer</h1>
+        <p id="replayTitle">Loading saved game...</p>
+        <div class="button-row">
+          <button id="prevMove" class="button secondary" type="button">Previous</button>
+          <button id="nextMove" class="button primary" type="button">Next</button>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Moves</h2>
+        <ol id="replayMoves" class="move-list"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <script src="/js/main.js" defer></script>
+  <script src="/js/board.js" defer></script>
+  <script src="/js/replay.js" defer></script>
+</body>
+</html>

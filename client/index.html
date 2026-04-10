@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess Arena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="landing-page">
+  <main class="hero-shell">
+    <section class="hero-panel">
+      <p class="eyebrow">Basic Chess Project</p>
+      <h1>Play a complete chess game in the browser with save and replay support.</h1>
+      <p class="hero-copy">
+        This first version focuses on the essentials: a playable board, legal move validation,
+        optional AI moves, and browser-based game history without MongoDB or Docker.
+      </p>
+      <div class="hero-actions">
+        <a class="button primary" href="/play">Start Playing</a>
+        <a class="button secondary" href="/history">View History</a>
+      </div>
+    </section>
+
+    <section class="info-grid">
+      <article class="info-card">
+        <h2>Live Play</h2>
+        <p>Move pieces directly on the board, switch modes, and play against the built-in AI.</p>
+      </article>
+      <article class="info-card">
+        <h2>Saved Games</h2>
+        <p>Completed matches can be stored in local browser storage with full move history.</p>
+      </article>
+      <article class="info-card">
+        <h2>Replay Viewer</h2>
+        <p>Load any saved match and step through the game move by move from the opening onward.</p>
+      </article>
+    </section>
+  </main>
+  <script src="/js/main.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game History</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/history.css">
+</head>
+<body>
+  <header class="page-header">
+    <a class="brand" href="/">Chess Arena</a>
+    <nav>
+      <a href="/play">Play</a>
+      <a href="/history">History</a>
+    </nav>
+  </header>
+
+  <main class="history-layout">
+    <section class="panel">
+      <h1>Saved Games</h1>
+      <p>Browse games saved in your browser and open any match in the replay viewer.</p>
+    </section>
+
+    <section class="panel">
+      <div id="historyList" class="history-list"></div>
+    </section>
+  </main>
+
+  <script src="/js/main.js" defer></script>
+  <script src="/js/history.js" defer></script>
+</body>
+</html>
