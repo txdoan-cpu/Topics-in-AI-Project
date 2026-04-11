@@ -2,6 +2,7 @@
   const FILES = "abcdefgh";
   const KNIGHT_OFFSETS = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
   const KING_OFFSETS = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+  const LABEL_FONT = '"IBM Plex Mono", monospace';
 
   function cloneBoard(board) {
     return board.map((row) => row.map((piece) => (piece ? { ...piece } : null)));
@@ -409,47 +410,265 @@
     constructor(root, options = {}) {
       this.root = root;
       this.onSquareClick = options.onSquareClick || (() => {});
-      this.pieceModel = options.pieceModel || "classic";
+      this.pieceModel = options.pieceModel || "standard";
       this.selectedSquare = null;
       this.legalTargets = [];
-      this.render(createInitialBoard());
+      this.boardState = createInitialBoard();
+      this.canvas = document.createElement("canvas");
+      this.canvas.className = "board-canvas";
+      this.canvas.setAttribute("aria-hidden", "true");
+      this.ctx = this.canvas.getContext("2d");
+      this.devicePixelRatio = window.devicePixelRatio || 1;
+      this.squareSize = 0;
+      this.boardPadding = 0;
+      this.pieceCache = new Map();
+
+      this.root.innerHTML = "";
+      this.root.appendChild(this.canvas);
+      this.root.tabIndex = 0;
+
+      this.handlePointerDown = this.handlePointerDown.bind(this);
+      this.handleResize = this.handleResize.bind(this);
+
+      this.root.addEventListener("pointerdown", this.handlePointerDown);
+      window.addEventListener("resize", this.handleResize);
+
+      if (typeof ResizeObserver !== "undefined") {
+        this.resizeObserver = new ResizeObserver(() => this.handleResize());
+        this.resizeObserver.observe(this.root);
+      }
+
+      this.resizeCanvas();
+      this.draw();
+    }
+
+    roundRectPath(x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      if (typeof this.ctx.roundRect === "function") {
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, width, height, r);
+        return;
+      }
+
+      this.ctx.beginPath();
+      this.ctx.moveTo(x + r, y);
+      this.ctx.arcTo(x + width, y, x + width, y + height, r);
+      this.ctx.arcTo(x + width, y + height, x, y + height, r);
+      this.ctx.arcTo(x, y + height, x, y, r);
+      this.ctx.arcTo(x, y, x + width, y, r);
+      this.ctx.closePath();
+    }
+
+    destroy() {
+      this.root.removeEventListener("pointerdown", this.handlePointerDown);
+      window.removeEventListener("resize", this.handleResize);
+      this.resizeObserver?.disconnect();
     }
 
     setPieceModel(pieceModel) {
-      this.pieceModel = pieceModel || "classic";
-    }
-
-    render(boardState) {
-      this.root.innerHTML = "";
-      for (let row = 0; row < 8; row += 1) {
-        for (let col = 0; col < 8; col += 1) {
-          const square = document.createElement("button");
-          square.type = "button";
-          square.className = `square ${(row + col) % 2 === 0 ? "light" : "dark"}`;
-          square.dataset.square = toSquare(row, col);
-          const piece = boardState[row][col];
-          if (piece) {
-            const canvas = document.createElement("canvas");
-            canvas.width = 96;
-            canvas.height = 96;
-            canvas.className = `piece-canvas piece-${piece.color}`;
-            window.ChessApp.drawPieceToCanvas(canvas, `${piece.color}${piece.type}`, this.pieceModel);
-            square.appendChild(canvas);
-          }
-          if (this.selectedSquare === square.dataset.square) square.classList.add("selected");
-          if (this.legalTargets.includes(square.dataset.square)) square.classList.add("legal");
-          square.addEventListener("click", () => this.onSquareClick(square.dataset.square));
-          this.root.appendChild(square);
-        }
-      }
+      this.pieceModel = pieceModel || "standard";
+      this.pieceCache.clear();
+      this.draw();
     }
 
     setSelection(square, legalTargets) {
       this.selectedSquare = square;
       this.legalTargets = legalTargets || [];
     }
+
+    render(boardState) {
+      this.boardState = boardState;
+      this.draw();
+    }
+
+    handleResize() {
+      this.resizeCanvas();
+      this.draw();
+    }
+
+    resizeCanvas() {
+      const size = Math.max(320, Math.floor(this.root.clientWidth || 0));
+      const ratio = window.devicePixelRatio || 1;
+      this.devicePixelRatio = ratio;
+      this.canvas.width = Math.floor(size * ratio);
+      this.canvas.height = Math.floor(size * ratio);
+      this.canvas.style.width = `${size}px`;
+      this.canvas.style.height = `${size}px`;
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.scale(ratio, ratio);
+      this.boardSize = size;
+      this.boardPadding = Math.max(12, size * 0.032);
+      this.innerBoardSize = size - this.boardPadding * 2;
+      this.squareSize = this.innerBoardSize / 8;
+    }
+
+    handlePointerDown(event) {
+      const rect = this.canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const square = this.squareFromPoint(x, y);
+      if (square) {
+        this.onSquareClick(square);
+      }
+    }
+
+    squareFromPoint(x, y) {
+      if (
+        x < this.boardPadding ||
+        y < this.boardPadding ||
+        x > this.boardPadding + this.innerBoardSize ||
+        y > this.boardPadding + this.innerBoardSize
+      ) {
+        return null;
+      }
+
+      const col = Math.min(7, Math.max(0, Math.floor((x - this.boardPadding) / this.squareSize)));
+      const row = Math.min(7, Math.max(0, Math.floor((y - this.boardPadding) / this.squareSize)));
+      return toSquare(row, col);
+    }
+
+    getBoardColors() {
+      const styles = getComputedStyle(this.root);
+      return {
+        light: styles.getPropertyValue("--light-square").trim() || "#ead4af",
+        dark: styles.getPropertyValue("--dark-square").trim() || "#8c5e38"
+      };
+    }
+
+    getPieceSprite(pieceKey) {
+      const cacheKey = `${pieceKey}:${this.pieceModel}:${Math.round(this.squareSize)}`;
+      if (this.pieceCache.has(cacheKey)) {
+        return this.pieceCache.get(cacheKey);
+      }
+
+      const sprite = document.createElement("canvas");
+      const spriteSize = Math.max(72, Math.floor(this.squareSize * this.devicePixelRatio * 0.96));
+      sprite.width = spriteSize;
+      sprite.height = spriteSize;
+      window.ChessApp.drawPieceToCanvas(sprite, pieceKey, this.pieceModel);
+      this.pieceCache.set(cacheKey, sprite);
+      return sprite;
+    }
+
+    drawBoardFrame() {
+      const ctx = this.ctx;
+      const size = this.boardSize;
+      const radius = Math.max(22, size * 0.045);
+
+      ctx.clearRect(0, 0, size, size);
+
+      ctx.save();
+      this.roundRectPath(0, 0, size, size, radius);
+      ctx.clip();
+
+      const shell = ctx.createLinearGradient(0, 0, size, size);
+      shell.addColorStop(0, "rgba(255,255,255,0.28)");
+      shell.addColorStop(0.45, "rgba(255,255,255,0.05)");
+      shell.addColorStop(1, "rgba(33,24,15,0.1)");
+      ctx.fillStyle = shell;
+      ctx.fillRect(0, 0, size, size);
+
+      ctx.restore();
+    }
+
+    drawSquares() {
+      const ctx = this.ctx;
+      const { light, dark } = this.getBoardColors();
+      const labelFontSize = Math.max(10, this.squareSize * 0.13);
+
+      for (let row = 0; row < 8; row += 1) {
+        for (let col = 0; col < 8; col += 1) {
+          const x = this.boardPadding + col * this.squareSize;
+          const y = this.boardPadding + row * this.squareSize;
+          const isLight = (row + col) % 2 === 0;
+          const base = isLight ? light : dark;
+
+          const overlay = ctx.createLinearGradient(x, y, x + this.squareSize, y + this.squareSize);
+          overlay.addColorStop(0, isLight ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)");
+          overlay.addColorStop(1, isLight ? "rgba(0,0,0,0.04)" : "rgba(0,0,0,0.08)");
+
+          ctx.fillStyle = base;
+          ctx.fillRect(x, y, this.squareSize, this.squareSize);
+          ctx.fillStyle = overlay;
+          ctx.fillRect(x, y, this.squareSize, this.squareSize);
+
+          ctx.strokeStyle = "rgba(255,255,255,0.05)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + 0.5, y + 0.5, this.squareSize - 1, this.squareSize - 1);
+
+          const square = toSquare(row, col);
+          if (this.selectedSquare === square) {
+            ctx.fillStyle = "rgba(72, 145, 255, 0.14)";
+            ctx.fillRect(x, y, this.squareSize, this.squareSize);
+            ctx.strokeStyle = "rgba(82, 145, 255, 0.96)";
+            ctx.lineWidth = Math.max(3, this.squareSize * 0.05);
+            ctx.strokeRect(
+              x + ctx.lineWidth / 2,
+              y + ctx.lineWidth / 2,
+              this.squareSize - ctx.lineWidth,
+              this.squareSize - ctx.lineWidth
+            );
+          } else if (this.legalTargets.includes(square)) {
+            ctx.fillStyle = "rgba(77, 175, 140, 0.78)";
+            ctx.beginPath();
+            ctx.arc(x + this.squareSize / 2, y + this.squareSize / 2, this.squareSize * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "rgba(77, 175, 140, 0.16)";
+            ctx.lineWidth = this.squareSize * 0.16;
+            ctx.beginPath();
+            ctx.arc(x + this.squareSize / 2, y + this.squareSize / 2, this.squareSize * 0.12, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          if (col === 0) {
+            ctx.fillStyle = isLight ? "rgba(94, 72, 43, 0.72)" : "rgba(255,255,255,0.72)";
+            ctx.font = `600 ${labelFontSize}px ${LABEL_FONT}`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(String(8 - row), x + this.squareSize * 0.08, y + this.squareSize * 0.08);
+          }
+
+          if (row === 7) {
+            ctx.fillStyle = isLight ? "rgba(94, 72, 43, 0.72)" : "rgba(255,255,255,0.72)";
+            ctx.font = `600 ${labelFontSize}px ${LABEL_FONT}`;
+            ctx.textAlign = "right";
+            ctx.textBaseline = "bottom";
+            ctx.fillText(FILES[col], x + this.squareSize * 0.9, y + this.squareSize * 0.92);
+          }
+        }
+      }
+    }
+
+    drawPieces() {
+      const pieceSize = this.squareSize * 0.9;
+      for (let row = 0; row < 8; row += 1) {
+        for (let col = 0; col < 8; col += 1) {
+          const piece = this.boardState[row][col];
+          if (!piece) {
+            continue;
+          }
+
+          const sprite = this.getPieceSprite(`${piece.color}${piece.type}`);
+          const x = this.boardPadding + col * this.squareSize + (this.squareSize - pieceSize) / 2;
+          const y = this.boardPadding + row * this.squareSize + (this.squareSize - pieceSize) / 2;
+          this.ctx.drawImage(sprite, x, y, pieceSize, pieceSize);
+        }
+      }
+    }
+
+    draw() {
+      if (!this.ctx || !this.boardState) {
+        return;
+      }
+
+      this.drawBoardFrame();
+      this.drawSquares();
+      this.drawPieces();
+    }
   }
 
   window.ChessApp.BrowserChessGame = BrowserChessGame;
   window.ChessApp.ChessBoard = ChessBoard;
+  window.ChessApp.createInitialBoard = createInitialBoard;
+  window.ChessApp.boardUtils = { toSquare, fromSquare };
 })();

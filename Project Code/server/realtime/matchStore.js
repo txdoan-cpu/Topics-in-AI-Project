@@ -27,8 +27,8 @@ function createSettings(settings = {}) {
   const time = Number(settings.timeControl || settings.time || 10);
   return {
     timeControl: [5, 10, 15, 20].includes(time) ? time : 10,
-    boardTheme: ["classic", "dark", "light"].includes(settings.boardTheme) ? settings.boardTheme : "classic",
-    pieceModel: ["standard", "modern", "minimal"].includes(settings.pieceModel) ? settings.pieceModel : "standard",
+    boardTheme: ["classic", "dark", "light", "emerald", "midnight", "sunset", "neon", "rose"].includes(settings.boardTheme) ? settings.boardTheme : "classic",
+    pieceModel: ["standard", "modern", "minimal", "luxe", "arcade"].includes(settings.pieceModel) ? settings.pieceModel : "standard",
     sound: settings.sound !== false
   };
 }

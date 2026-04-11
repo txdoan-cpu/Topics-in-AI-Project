@@ -23,10 +23,15 @@
   <main class="play-layout">
     <section class="board-panel">
       <div id="board" class="board" aria-label="Chess board"></div>
+      <div id="boardNotice" class="board-notice is-hidden" aria-live="assertive" aria-atomic="true"></div>
     </section>
 
     <aside class="sidebar-panel">
       <section class="panel">
+        <div class="menu-panel-header">
+          <p class="menu-panel-eyebrow">Game Menu</p>
+          <h2 class="menu-panel-title">Match Control Center</h2>
+        </div>
         <p id="statusText">White to move.</p>
         <div class="mode-row">
           <select id="gameMode">

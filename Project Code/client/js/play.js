@@ -1,6 +1,7 @@
 (function startPlayPage() {
   const boardElement = document.getElementById("board");
   if (!boardElement) return;
+  const boardNotice = document.getElementById("boardNotice");
 
   const ACTIVE_GAME_STORAGE_KEY_PREFIX = "chessActiveGame";
   const SAVED_GAME_STORAGE_KEY_PREFIX = "chessSavedActiveGame";
@@ -38,10 +39,10 @@
   const blackCaptured = document.getElementById("blackCaptured");
   const { BrowserChessGame, ChessBoard, api, ui, storage, multiplayer } = window.ChessApp;
   const searchParams = new URLSearchParams(window.location.search);
-  const sounds = {
-    move: new Audio("/assets/audio/move.wav"),
-    capture: new Audio("/assets/audio/capture.wav"),
-    check: new Audio("/assets/audio/check.wav")
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  const audioState = {
+    context: AudioContextCtor ? new AudioContextCtor() : null,
+    unlocked: false
   };
 
   let game = new BrowserChessGame();
@@ -57,6 +58,7 @@
   let aiThinking = false;
   let undoStack = [];
   let lastGameAlertKey = null;
+  let boardNoticeTimer = null;
 
   const onlineState = {
     client: null,
@@ -66,6 +68,54 @@
     ready: false,
     rooms: []
   };
+
+  function unlockAudio() {
+    if (!audioState.context || audioState.unlocked) {
+      return;
+    }
+
+    const finishUnlock = () => {
+      const gain = audioState.context.createGain();
+      gain.gain.value = 0.0001;
+      gain.connect(audioState.context.destination);
+      const osc = audioState.context.createOscillator();
+      osc.frequency.value = 440;
+      osc.connect(gain);
+      osc.start();
+      osc.stop(audioState.context.currentTime + 0.01);
+      audioState.unlocked = true;
+    };
+
+    if (audioState.context.state === "suspended") {
+      audioState.context.resume().then(finishUnlock).catch(() => {});
+      return;
+    }
+
+    finishUnlock();
+  }
+
+  document.addEventListener("pointerdown", unlockAudio, { passive: true });
+  document.addEventListener("keydown", unlockAudio, { passive: true });
+
+  function playTone({ frequency, duration, type = "sine", volume = 0.05, attack = 0.005, release = 0.08, when = 0 }) {
+    if (!audioState.context) {
+      return;
+    }
+
+    unlockAudio();
+    const startAt = audioState.context.currentTime + when;
+    const oscillator = audioState.context.createOscillator();
+    const gain = audioState.context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.exponentialRampToValueAtTime(volume, startAt + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration + release);
+    oscillator.connect(gain);
+    gain.connect(audioState.context.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + duration + release + 0.02);
+  }
 
   function getLegacyActiveGameStorageKey() {
     return ACTIVE_GAME_STORAGE_KEY_PREFIX;
@@ -99,8 +149,8 @@
     return {
       difficulty: difficultyKey,
       time,
-      theme: searchParams.get("theme") || "classic",
-      pieceModel: searchParams.get("pieceModel") || "standard",
+        theme: searchParams.get("theme") || "classic",
+        pieceModel: searchParams.get("pieceModel") || "standard",
       sound: searchParams.get("sound") !== "off",
       ...AI_PRESETS[difficultyKey]
     };
@@ -120,8 +170,8 @@
     return {
       roomName,
       time: String(searchParams.get("time") || "10"),
-      theme: String(searchParams.get("theme") || "classic"),
-      pieceModel: String(searchParams.get("pieceModel") || "standard"),
+        theme: String(searchParams.get("theme") || "classic"),
+        pieceModel: String(searchParams.get("pieceModel") || "standard"),
       sound: searchParams.get("sound") !== "off"
     };
   }
@@ -182,6 +232,7 @@
     selectedSquare = null;
     aiThinking = false;
     lastGameAlertKey = null;
+    clearBoardNotice();
     stopTimerLoop();
     if (timerState) {
       startTimerLoop();
@@ -315,8 +366,39 @@
     return status.message === "Checkmate" ? `Checkmate. ${status.result === "1-0" ? "White" : "Black"} wins` : status.message;
   }
 
+  function clearBoardNotice() {
+    if (boardNoticeTimer) {
+      window.clearTimeout(boardNoticeTimer);
+      boardNoticeTimer = null;
+    }
+    if (!boardNotice) {
+      return;
+    }
+    boardNotice.textContent = "";
+    boardNotice.classList.add("is-hidden");
+    boardNotice.classList.remove("is-warning", "is-success", "is-danger");
+  }
+
+  function showBoardNotice(message, tone = "warning", duration = 12000) {
+    if (!boardNotice || !message) {
+      return;
+    }
+    clearBoardNotice();
+    boardNotice.textContent = message;
+    boardNotice.classList.remove("is-hidden");
+    boardNotice.classList.add(
+      tone === "danger" ? "is-danger" : tone === "success" ? "is-success" : "is-warning"
+    );
+    if (duration > 0) {
+      boardNoticeTimer = window.setTimeout(() => {
+        clearBoardNotice();
+      }, duration);
+    }
+  }
+
   function notifyGameState(status) {
     if (!hasStarted) {
+      clearBoardNotice();
       return;
     }
 
@@ -326,11 +408,17 @@
     }
 
     let message = "";
+    let duration = 12000;
     if (status.over) {
       const outcome = getOutcomeLabel(status);
       message = outcome === "Draw" ? "Draw" : outcome;
     } else if (status.message === "Check") {
       message = "Check";
+      duration = 0;
+    } else {
+      clearBoardNotice();
+      lastGameAlertKey = null;
+      return;
     }
 
     if (!message) {
@@ -338,7 +426,10 @@
     }
 
     lastGameAlertKey = alertKey;
-    window.alert(message);
+    const tone = status.over
+      ? (message === "Loss" ? "danger" : "success")
+      : "warning";
+    showBoardNotice(message, tone, duration);
   }
 
   function syncTimerTurn() {
@@ -431,20 +522,35 @@
       return;
     }
 
-    const sound = sounds[name];
-    if (!sound) {
+    if (name === "capture") {
+      playTone({ frequency: 220, duration: 0.05, type: "square", volume: 0.055 });
+      playTone({ frequency: 164, duration: 0.08, type: "triangle", volume: 0.045, when: 0.04 });
       return;
     }
 
-    sound.currentTime = 0;
-    sound.play().catch(() => {});
+    if (name === "check") {
+      playTone({ frequency: 440, duration: 0.06, type: "triangle", volume: 0.05 });
+      playTone({ frequency: 587, duration: 0.09, type: "triangle", volume: 0.055, when: 0.07 });
+      return;
+    }
+
+    playTone({ frequency: 330, duration: 0.045, type: "triangle", volume: 0.04 });
   }
 
   function applyBoardAppearance() {
     const theme = currentAiSetup?.theme || "classic";
     const pieceModel = currentAiSetup?.pieceModel || "standard";
 
-    boardElement.classList.remove("board-theme-classic", "board-theme-dark", "board-theme-light");
+    boardElement.classList.remove(
+      "board-theme-classic",
+      "board-theme-dark",
+      "board-theme-light",
+      "board-theme-emerald",
+      "board-theme-midnight",
+      "board-theme-sunset",
+      "board-theme-neon",
+      "board-theme-rose"
+    );
     boardElement.classList.add(`board-theme-${theme}`);
     board?.setPieceModel(pieceModel);
   }
@@ -852,11 +958,11 @@
       statusMessage: wasCurrentPlayer
         ? "You resigned from the online match."
         : "Your opponent resigned from the online match."
-    });
+      });
 
-    if (wasCurrentPlayer) {
-      window.alert("You have resigned the match.");
-    } else {
+      if (wasCurrentPlayer) {
+        window.alert("You have resigned the match.");
+      } else {
       window.alert("Your opponent has resigned the match.");
     }
 
@@ -1046,11 +1152,12 @@
     const { preserveStarted = false } = options;
     game = new BrowserChessGame();
     selectedSquare = null;
-    hasStarted = preserveStarted;
-    undoStack = [];
-    aiThinking = false;
-    lastGameAlertKey = null;
-    stopTimerLoop();
+      hasStarted = preserveStarted;
+      undoStack = [];
+      aiThinking = false;
+      lastGameAlertKey = null;
+      clearBoardNotice();
+      stopTimerLoop();
 
     if (preserveStarted && currentAiSetup?.time) {
       initializeTimer(currentAiSetup.time);
@@ -1122,10 +1229,11 @@
     game.moveHistory = Array.isArray(savedGame.moveHistory) ? savedGame.moveHistory : [];
     setModeValue(savedGame.mode === "ai" ? "ai" : "local");
     currentAiSetup = savedGame.aiSetup || null;
-    undoStack = [];
-    aiThinking = false;
-    lastGameAlertKey = null;
-    timerState = savedGame.timerState
+      undoStack = [];
+      aiThinking = false;
+      lastGameAlertKey = null;
+      clearBoardNotice();
+      timerState = savedGame.timerState
       ? { ...savedGame.timerState, lastTickAt: null }
       : (currentAiSetup?.time ? {
           whiteMs: Number(currentAiSetup.time) * 60 * 1000,

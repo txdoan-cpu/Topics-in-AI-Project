@@ -1,14 +1,48 @@
 .play-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 680px) minmax(280px, 360px);
-  gap: 1.5rem;
+  grid-template-columns: minmax(420px, 820px) minmax(280px, 360px);
+  gap: 1.85rem;
   align-items: start;
 }
 
 .board-panel {
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: 0.35rem;
+  position: relative;
+}
+
+.board-notice {
+  position: absolute;
+  left: 50%;
+  top: 2rem;
+  transform: translateX(-50%);
+  z-index: 5;
+  min-width: min(78%, 520px);
+  max-width: min(86%, 620px);
+  padding: 1rem 1.35rem;
+  border-radius: 18px;
+  background: rgba(26, 35, 53, 0.92);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 18px 34px rgba(20, 28, 44, 0.28);
+  text-align: center;
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
+}
+
+.board-notice.is-warning {
+  background: rgba(52, 74, 120, 0.94);
+}
+
+.board-notice.is-success {
+  background: rgba(38, 90, 58, 0.94);
+}
+
+.board-notice.is-danger {
+  background: rgba(128, 43, 43, 0.94);
 }
 
 .sidebar-panel {
@@ -16,8 +50,49 @@
   gap: 1rem;
 }
 
+.sidebar-panel .panel {
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(252, 253, 255, 0.94), rgba(236, 240, 247, 0.88));
+  border: 1px solid rgba(52, 70, 98, 0.1);
+  box-shadow:
+    0 22px 50px rgba(36, 52, 79, 0.1),
+    0 1px 0 rgba(255,255,255,0.75) inset;
+}
+
 .sidebar-panel .panel p {
   line-height: 1.55;
+}
+
+.menu-panel-header {
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(52, 70, 98, 0.1);
+}
+
+.menu-panel-eyebrow {
+  margin: 0 0 0.3rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5d739f;
+}
+
+.menu-panel-title {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+  color: #283650;
+}
+
+#statusText {
+  margin: 0 0 0.9rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(223, 230, 244, 0.9), rgba(255,255,255,0.72));
+  border: 1px solid rgba(84, 105, 146, 0.16);
+  font-weight: 600;
 }
 
 .mode-row {
@@ -33,17 +108,18 @@
 .mode-row select {
   width: 100%;
   padding: 0.8rem 1rem;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: var(--panel-strong);
+  border-radius: 16px;
+  border: 1px solid rgba(52, 70, 98, 0.12);
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(234, 239, 247, 0.9));
+  box-shadow: 0 8px 18px rgba(36, 52, 79, 0.05);
 }
 
 .online-panel {
   margin-bottom: 1rem;
   padding: 1rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(248, 250, 254, 0.86), rgba(232, 237, 246, 0.8));
+  border: 1px solid rgba(52, 70, 98, 0.11);
 }
 
 .connection-row {
@@ -58,8 +134,8 @@
   gap: 0.35rem;
   padding: 0.45rem 0.75rem;
   border-radius: 999px;
-  background: rgba(22, 28, 32, 0.06);
-  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(52, 70, 98, 0.1);
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.78rem;
   letter-spacing: 0.05em;
@@ -155,12 +231,19 @@
   gap: 0.8rem;
   width: 100%;
   padding: 0.85rem 0.95rem;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 16px;
+  border: 1px solid rgba(52, 70, 98, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(231, 237, 247, 0.86));
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.room-list-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(84, 105, 146, 0.24);
+  box-shadow: 0 12px 22px rgba(36, 52, 79, 0.08);
 }
 
 .room-list-item:disabled {
@@ -193,9 +276,9 @@
 .game-settings {
   margin: 1rem 0;
   padding: 1rem;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(250, 251, 255, 0.86), rgba(233, 238, 246, 0.78));
+  border: 1px solid rgba(52, 70, 98, 0.1);
 }
 
 .settings-label {
@@ -238,8 +321,8 @@
 .capture-group {
   padding: 0.95rem 1rem;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,0.84), rgba(233, 238, 246, 0.76));
+  border: 1px solid rgba(52, 70, 98, 0.1);
 }
 
 .capture-list {
@@ -256,8 +339,13 @@
   width: 1.8rem;
   height: 1.8rem;
   border-radius: 999px;
-  background: rgba(22, 28, 32, 0.08);
+  background: rgba(70, 91, 126, 0.08);
   font-size: 1rem;
+}
+
+#savedHint {
+  margin: 0.4rem 0 0;
+  color: #5c6c84;
 }
 
 .timer-card {
