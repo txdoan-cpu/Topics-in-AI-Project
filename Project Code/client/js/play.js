@@ -18,6 +18,7 @@
   const undoButton = document.getElementById("undoButton");
   const retreatGameButton = document.getElementById("retreatGameButton");
   const saveButton = document.getElementById("saveButton");
+  const pauseButton = document.getElementById("pauseButton");
   const gameMode = document.getElementById("gameMode");
   const savedHint = document.getElementById("savedHint");
   const logoutButton = document.getElementById("logoutButton");
@@ -56,6 +57,7 @@
   let suppressModeChange = false;
   let suppressOnlineDisconnectReset = false;
   let aiThinking = false;
+  let isPaused = false;
   let undoStack = [];
   let lastGameAlertKey = null;
   let boardNoticeTimer = null;
@@ -216,7 +218,8 @@
       gameState: game.serialize(),
       moveHistory: game.moveHistory.map((move) => ({ ...move })),
       timerState: timerState ? { ...timerState, lastTickAt: null } : null,
-      aiSetup: currentAiSetup ? { ...currentAiSetup } : null
+      aiSetup: currentAiSetup ? { ...currentAiSetup } : null,
+      isPaused
     };
   }
 
@@ -229,12 +232,13 @@
     game.moveHistory = Array.isArray(snapshot.moveHistory) ? snapshot.moveHistory : [];
     currentAiSetup = snapshot.aiSetup ? { ...snapshot.aiSetup } : currentAiSetup;
     timerState = snapshot.timerState ? { ...snapshot.timerState, lastTickAt: null } : null;
+    isPaused = Boolean(snapshot.isPaused);
     selectedSquare = null;
     aiThinking = false;
     lastGameAlertKey = null;
     clearBoardNotice();
     stopTimerLoop();
-    if (timerState) {
+    if (timerState && !isPaused) {
       startTimerLoop();
     } else {
       updateTimerDisplay();
@@ -255,7 +259,8 @@
       gameState: game.serialize(),
       moveHistory: game.moveHistory,
       aiSetup: currentAiSetup,
-      timerState: timerState ? { ...timerState } : null
+      timerState: timerState ? { ...timerState } : null,
+      isPaused
     }));
   }
 
@@ -283,6 +288,7 @@
           moveHistory: game.moveHistory,
           aiSetup: currentAiSetup,
           timerState: timerState ? { ...timerState } : null,
+          isPaused,
           savedAt: new Date().toISOString()
         };
 
@@ -315,8 +321,8 @@
 
     whiteTimerValue.textContent = formatTime(timerState.whiteMs);
     blackTimerValue.textContent = formatTime(timerState.blackMs);
-    whiteTimerCard.classList.toggle("is-active", hasStarted && game.turn === "w" && !timerState.expiredColor);
-    blackTimerCard.classList.toggle("is-active", hasStarted && game.turn === "b" && !timerState.expiredColor);
+    whiteTimerCard.classList.toggle("is-active", hasStarted && !isPaused && game.turn === "w" && !timerState.expiredColor);
+    blackTimerCard.classList.toggle("is-active", hasStarted && !isPaused && game.turn === "b" && !timerState.expiredColor);
     whiteTimerCard.classList.toggle("is-expired", timerState.expiredColor === "w");
     blackTimerCard.classList.toggle("is-expired", timerState.expiredColor === "b");
   }
@@ -401,6 +407,9 @@
       clearBoardNotice();
       return;
     }
+    if (isPaused) {
+      return;
+    }
 
     const alertKey = `${game.toFen()}|${status.message}|${status.result || ""}`;
     if (alertKey === lastGameAlertKey) {
@@ -433,7 +442,7 @@
   }
 
   function syncTimerTurn() {
-    if (!timerState || timerState.expiredColor || !hasStarted) {
+    if (!timerState || timerState.expiredColor || !hasStarted || isPaused) {
       return;
     }
     timerState.lastTickAt = Date.now();
@@ -454,7 +463,7 @@
   }
 
   function tickTimer() {
-    if (!timerState || timerState.expiredColor || !hasStarted) {
+    if (!timerState || timerState.expiredColor || !hasStarted || isPaused) {
       return;
     }
 
@@ -486,7 +495,7 @@
   }
 
   function startTimerLoop() {
-    if (!timerState || timerState.expiredColor || !hasStarted) {
+    if (!timerState || timerState.expiredColor || !hasStarted || isPaused) {
       updateTimerDisplay();
       return;
     }
@@ -667,6 +676,7 @@
       loadGameButton?.classList.add("is-hidden");
       undoButton?.classList.add("is-hidden");
       saveButton?.classList.add("is-hidden");
+      pauseButton?.classList.add("is-hidden");
       retreatGameButton?.classList.toggle("is-hidden", !onlineState.connected);
       retreatGameButton.disabled = !onlineState.connected;
       if (gameMode) {
@@ -680,9 +690,14 @@
     loadGameButton?.classList.toggle("is-hidden", hasStarted);
     undoButton?.classList.toggle("is-hidden", !isAiMode() || !hasStarted);
     if (undoButton) {
-      undoButton.disabled = !isAiMode() || !hasStarted || undoStack.length === 0 || aiThinking;
+      undoButton.disabled = !isAiMode() || !hasStarted || undoStack.length === 0 || aiThinking || isPaused;
     }
     saveButton?.classList.toggle("is-hidden", !hasStarted);
+    pauseButton?.classList.toggle("is-hidden", !hasStarted);
+    if (pauseButton) {
+      pauseButton.textContent = isPaused ? "Resume" : "Pause";
+      pauseButton.disabled = !hasStarted || getEffectiveStatus().over || aiThinking;
+    }
     retreatGameButton?.classList.toggle("is-hidden", !hasStarted);
     retreatGameButton.disabled = !hasStarted;
     if (gameMode) {
@@ -738,6 +753,9 @@
     if (effectiveStatus.over) {
       return `${effectiveStatus.message}. Result: ${effectiveStatus.result}`;
     }
+    if (isPaused) {
+      return "Game paused. Press Resume to continue.";
+    }
 
     if (isOnlineMode()) {
       if (!onlineState.playerColor) {
@@ -783,7 +801,7 @@
   }
 
   async function maybeMakeAiMove() {
-    if (!isAiMode() || !currentAiSetup || game.turn !== "b" || getEffectiveStatus().over) {
+    if (!isAiMode() || !currentAiSetup || game.turn !== "b" || getEffectiveStatus().over || isPaused) {
       return;
     }
 
@@ -824,6 +842,10 @@
 
   async function handleSquareClick(square) {
     if (!hasStarted || getEffectiveStatus().over) {
+      return;
+    }
+    if (isPaused) {
+      statusText.textContent = "Game is paused. Press Resume to continue.";
       return;
     }
 
@@ -919,6 +941,7 @@
 
     selectedSquare = null;
     hasStarted = false;
+    isPaused = false;
     stopTimerLoop();
     timerState = null;
     game = new BrowserChessGame();
@@ -991,6 +1014,7 @@
     } : null;
     selectedSquare = null;
     hasStarted = Boolean(snapshot.matchStarted);
+    isPaused = false;
     timerState = snapshot.timerState ? { ...snapshot.timerState } : null;
     stopTimerLoop();
     setModeValue("online");
@@ -1152,12 +1176,13 @@
     const { preserveStarted = false } = options;
     game = new BrowserChessGame();
     selectedSquare = null;
-      hasStarted = preserveStarted;
-      undoStack = [];
-      aiThinking = false;
-      lastGameAlertKey = null;
-      clearBoardNotice();
-      stopTimerLoop();
+    isPaused = false;
+    hasStarted = preserveStarted;
+    undoStack = [];
+    aiThinking = false;
+    lastGameAlertKey = null;
+    clearBoardNotice();
+    stopTimerLoop();
 
     if (preserveStarted && currentAiSetup?.time) {
       initializeTimer(currentAiSetup.time);
@@ -1192,6 +1217,7 @@
 
     currentAiSetup = null;
     hasStarted = true;
+    isPaused = false;
     clearActiveGame();
     timerState = null;
     resetGame({ preserveStarted: true });
@@ -1229,11 +1255,12 @@
     game.moveHistory = Array.isArray(savedGame.moveHistory) ? savedGame.moveHistory : [];
     setModeValue(savedGame.mode === "ai" ? "ai" : "local");
     currentAiSetup = savedGame.aiSetup || null;
-      undoStack = [];
-      aiThinking = false;
-      lastGameAlertKey = null;
-      clearBoardNotice();
-      timerState = savedGame.timerState
+    isPaused = Boolean(savedGame.isPaused);
+    undoStack = [];
+    aiThinking = false;
+    lastGameAlertKey = null;
+    clearBoardNotice();
+    timerState = savedGame.timerState
       ? { ...savedGame.timerState, lastTickAt: null }
       : (currentAiSetup?.time ? {
           whiteMs: Number(currentAiSetup.time) * 60 * 1000,
@@ -1248,7 +1275,35 @@
     }
     saveActiveGame();
     updateSettingsDisplay();
-    startTimerLoop();
+    if (!isPaused) {
+      startTimerLoop();
+    }
+    render();
+  }
+
+  function togglePause() {
+    if (!hasStarted || isOnlineMode()) {
+      return;
+    }
+    if (getEffectiveStatus().over) {
+      return;
+    }
+    if (aiThinking) {
+      statusText.textContent = "Wait for the AI move to finish before pausing.";
+      return;
+    }
+
+    isPaused = !isPaused;
+    selectedSquare = null;
+    if (isPaused) {
+      stopTimerLoop();
+      showBoardNotice("Paused", "warning", 0);
+    } else {
+      clearBoardNotice();
+      startTimerLoop();
+    }
+
+    saveActiveGame();
     render();
   }
 
@@ -1313,8 +1368,11 @@
       setModeValue(activeGame.mode === "ai" ? "ai" : "local");
       currentAiSetup = activeGame.aiSetup || null;
       timerState = activeGame.timerState ? { ...activeGame.timerState, lastTickAt: null } : null;
+      isPaused = Boolean(activeGame.isPaused);
       hasStarted = true;
-      startTimerLoop();
+      if (!isPaused) {
+        startTimerLoop();
+      }
     }
   }
 
@@ -1335,6 +1393,7 @@
   undoButton?.addEventListener("click", undoLastAiTurn);
   retreatGameButton?.addEventListener("click", () => { retreatGame(); });
   saveButton.addEventListener("click", saveGame);
+  pauseButton?.addEventListener("click", togglePause);
   createMatchButton?.addEventListener("click", () => {
     window.location.assign("/online-setup");
   });
@@ -1350,6 +1409,7 @@
     if (isOnlineMode()) {
       currentAiSetup = null;
       hasStarted = false;
+      isPaused = false;
       timerState = null;
       clearActiveGame();
       resetGame({ preserveStarted: false });
