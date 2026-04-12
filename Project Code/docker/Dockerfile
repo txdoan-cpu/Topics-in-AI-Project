@@ -1,14 +1,16 @@
 FROM node:20-alpine
 
-WORKDIR /app/server
+ENV NODE_ENV=production
+ENV PORT=3000
 
-COPY server/package*.json ./
-RUN npm install
+WORKDIR /app
 
-COPY server ./
-COPY client ../client
+COPY server/package*.json ./server/
+RUN npm ci --omit=dev --prefix ./server
+
+COPY server ./server
+COPY client ./client
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
-
+CMD ["npm", "--prefix", "server", "start"]
