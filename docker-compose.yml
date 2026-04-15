@@ -5,7 +5,7 @@ services:
       dockerfile: ../Dockerfile
     ports:
       - "3000:3000"
-    environment:
+    environment: 
       PORT: 3000
       MONGO_URI: mongodb://mongo:27017/chess_game
       JWT_SECRET: docker-secret
@@ -16,8 +16,6 @@ services:
   mongo:
     image: mongo:7
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     volumes:
       - mongo-data:/data/db
 
