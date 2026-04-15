@@ -168,7 +168,7 @@
 }
 
 .game-actions-secondary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-top: 0.75rem;
 }
 
@@ -193,6 +193,12 @@
   background: rgba(212, 166, 92, 0.2);
   color: #6f431b;
   border: 1px solid rgba(212, 166, 92, 0.32);
+}
+
+#pauseButton {
+  background: rgba(75, 86, 176, 0.14);
+  color: #35428d;
+  border: 1px solid rgba(75, 86, 176, 0.28);
 }
 
 #retreatGameButton {
