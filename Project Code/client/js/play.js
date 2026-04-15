@@ -602,7 +602,7 @@
         : "Create a room or join an existing room to play live.";
     }
 
-    retreatGameButton.textContent = onlineMode ? "Resign Match" : "Retreat Game";
+    retreatGameButton.textContent = onlineMode ? "Resign Match" : "Quit Game";
     renderRoomList();
   }
 
@@ -646,7 +646,7 @@
       button.append(details, count);
       button.addEventListener("click", async () => {
         if (room.connectedPlayers >= room.capacity) {
-          window.alert("Room is already full.");
+        ui.alert("Room is already full.");
           statusText.textContent = "Room is already full.";
           return;
         }
@@ -961,9 +961,9 @@
       });
 
       if (wasCurrentPlayer) {
-        window.alert("You have resigned the match.");
-      } else {
-      window.alert("Your opponent has resigned the match.");
+      ui.alert("You have resigned the match.");
+    } else {
+      ui.alert("Your opponent has resigned the match.");
     }
 
     ensureOnlineClient().listRooms().catch(() => {});
@@ -976,7 +976,7 @@
 
     applyOnlineSnapshot(payload.snapshot, { replaceUrl: true });
     statusText.textContent = "Your opponent resigned. Waiting for a new player to join.";
-    window.alert("Your opponent has resigned the match.");
+    ui.alert("Your opponent has resigned the match.");
     ensureOnlineClient().listRooms().catch(() => {});
   }
 
@@ -1211,11 +1211,11 @@
     const savedGame = readSavedGame();
     if (!savedGame) {
       updateActionState();
-      window.alert("Save game is not found!");
+      await ui.alert("Save game is not found!");
       return;
     }
 
-    if (!window.confirm("Load the previously saved game? Any current unsaved progress will be replaced.")) {
+    if (!await ui.confirm("Load the previously saved game? Any current unsaved progress will be replaced.")) {
       return;
     }
 
@@ -1254,7 +1254,7 @@
 
   async function retreatGame() {
     if (isOnlineMode()) {
-      if (!window.confirm("Confirm Resignation\n\nAre you sure you want to resign this match?")) {
+      if (!await ui.confirm("Confirm Resignation\n\nAre you sure you want to resign this match?")) {
         return;
       }
 
@@ -1266,7 +1266,7 @@
           keepRoomId: false,
           statusMessage: "You resigned from the online match."
         });
-        window.alert("You have resigned the match.");
+        await ui.alert("You have resigned the match.");
         ensureOnlineClient().listRooms().catch(() => {});
       } catch (error) {
         statusText.textContent = error.message;
@@ -1274,7 +1274,7 @@
       return;
     }
 
-    if (!window.confirm("Retreat the current game and return to the not-started state?")) {
+    if (!await ui.confirm("Quit the current game and return to the not-started state?")) {
       return;
     }
 
