@@ -49,7 +49,7 @@ npm run dev
 
 Project URL
 
-* Paste your hosted web application URL here so I can test it
+*(https://groupb.stu.researchatmun.ca/)
 
 Project Videos:
 
